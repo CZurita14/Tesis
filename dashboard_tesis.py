@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from Adafruit_IO import Client, RequestError
 import os
+from dotenv import load_dotenv
 from modelo_prediccion import cargar_y_limpiar_datos, integrar_logica_negocio, entrenar_modelo_random_forest
 
 # Configuración de la página del Dashboard
@@ -13,27 +14,41 @@ st.set_page_config(page_title="Dashboard Predictivo de Producción", page_icon="
 st.title("👖 Dashboard de Producción y Análisis de Desperdicio Textil")
 st.markdown("Monitoreo en tiempo real (Adafruit IO) y Predicción mediante Machine Learning (Random Forest).")
 
-from dotenv import load_dotenv
-
 # ==========================================
 # 1. CREDENCIALES DE ADAFRUIT IO
 # ==========================================
-# Cargar variables de entorno para mayor seguridad en producción
+# Intentar cargar desde secrets o .env
 if "ADAFRUIT_IO_USERNAME" in st.secrets:
-    ADAFRUIT_IO_USERNAME = st.secrets["ADAFRUIT_IO_USERNAME"]
-    ADAFRUIT_IO_KEY = st.secrets["ADAFRUIT_IO_KEY"]
+    username = st.secrets["ADAFRUIT_IO_USERNAME"]
+    key = st.secrets["ADAFRUIT_IO_KEY"]
 else:
     load_dotenv()
-    ADAFRUIT_IO_USERNAME = os.getenv("ADAFRUIT_IO_USERNAME")
-    ADAFRUIT_IO_KEY = os.getenv("ADAFRUIT_IO_KEY")
+    username = os.getenv("ADAFRUIT_IO_USERNAME")
+    key = os.getenv("ADAFRUIT_IO_KEY")
+
+# Interfaz para ingresar credenciales si faltan (Solución al error 404 en Streamlit Cloud)
+if not username or not key:
+    st.warning("⚠️ Faltan las credenciales de Adafruit IO (Usuario o Llave).")
+    st.info("Dado que estás en la nube (Streamlit Cloud), tu archivo '.env' no se subió por seguridad. Puedes ingresar temporalmente tus credenciales aquí para ver el dashboard funcionando, o configurarlas permanentemente en 'Settings -> Secrets' en tu panel de Streamlit.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        username = st.text_input("Adafruit IO Username:")
+    with col2:
+        key = st.text_input("Adafruit IO Key:", type="password")
+        
+    if not username or not key:
+        st.stop()  # Detener ejecución hasta que se ingresen
 
 # Inicializar cliente de Adafruit IO
 try:
-    aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
+    aio = Client(username, key)
+    # Hacer una llamada rápida para validar credenciales (Evita el 404 posterior si el usuario es erróneo)
+    _ = aio.feeds()
     conexion_exitosa = True
 except Exception as e:
     conexion_exitosa = False
-    st.error(f"Error conectando a Adafruit IO: {e}")
+    st.error(f"❌ Error conectando a Adafruit IO. Revisa que tu usuario '{username}' y tu llave sean correctos. Error técnico: {e}")
 
 # ==========================================
 # 2. SECCIÓN EN TIEMPO REAL (ADAFRUIT IO)
@@ -41,7 +56,7 @@ except Exception as e:
 st.header("📡 Monitoreo en Tiempo Real")
 
 @st.cache_data
-def obtener_llave_feed_correcta():
+def obtener_llave_feed_correcta(username_cache):
     try:
         feeds_disponibles = aio.feeds()
         nombres_feeds = [f.key for f in feeds_disponibles]
@@ -57,14 +72,13 @@ def obtener_llave_feed_correcta():
         return 'peso'
 
 if conexion_exitosa:
-    llave_feed = obtener_llave_feed_correcta()
+    # Pasamos el username para que cache_data se invalide si el usuario cambia
+    llave_feed = obtener_llave_feed_correcta(username)
     
     @st.fragment(run_every=4)
     def render_realtime_dashboard():
         try:
-            # ERROR SOLUCIONADO: Anteriormente se llamaba a aio.feeds(), aio.receive() y aio.data() en cada ciclo.
-            # Eso provocaba 3 peticiones cada 4 segundos (45 req/min), lo que excede la cuota de 30 req/min de Adafruit.
-            # Ahora solo llamamos a aio.data() 1 vez (15 req/min), optimizando el límite de la API.
+            # 1 sola llamada a data() (historial), optimizando el límite de la API.
             datos_recientes = aio.data(llave_feed)
             
             if not datos_recientes:
@@ -98,7 +112,7 @@ if conexion_exitosa:
             st.warning(f"No se pudo obtener datos del feed '{llave_feed}'. Verifica tu configuración. Error: {e}")
             
     render_realtime_dashboard()
-        
+
 st.divider()
 
 # ==========================================
@@ -108,11 +122,9 @@ st.header("🤖 Análisis Histórico y Predicción (Random Forest)")
 
 @st.cache_data
 def cargar_y_entrenar_modelo_v2(filepath_excel, filepath_csv1, filepath_csv3):
-    # Reutilizamos las funciones creadas en tu archivo modelo_prediccion.py
     df_limpio = cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3)
     df_final = integrar_logica_negocio(df_limpio)
     
-    # Entrenar el modelo
     rf_model = entrenar_modelo_random_forest(df_final)
     return df_final, rf_model
 
@@ -150,7 +162,6 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     with tab3:
         fig_corr, ax_corr = plt.subplots(figsize=(8,6))
         cols_corr = ['peso_total_g', 'pantalones_procesados', 'tela_consumida_m', 'desperdicio_estimado_g']
-        # Correlación de variables de negocio
         matriz_corr = df_historico[cols_corr].corr()
         sns.heatmap(matriz_corr, annot=True, cmap='coolwarm', fmt=".2f", ax=ax_corr)
         st.pyplot(fig_corr)
@@ -159,15 +170,12 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     st.subheader("🔮 Predicción a Futuro")
     st.write("Con base en los datos pasados, el modelo prevé lo siguiente para el próximo ciclo de producción:")
     
-    # Tomamos el último día como referencia para predecir el comportamiento del día siguiente
     ultimo_dia = df_historico.iloc[-1:]
     
-    # IMPORTANTE: Eliminamos 'tela_consumida_m' de los features porque causa Data Leakage (trampa).
     features_modelo = ['dia_semana', 'dia_mes', 'mes', 'peso_lag_1', 'peso_lag_2', 'peso_lag_3', 'media_movil_3d']
     
     prediccion_futura = modelo_rf.predict(ultimo_dia[features_modelo])
     
-    # Calculamos equivalencias DESPUÉS de la predicción, no antes.
     pantalones_futuros = prediccion_futura[0] / 500
     tela_futura = pantalones_futuros * 1.20
     

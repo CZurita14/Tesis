@@ -121,30 +121,33 @@ st.divider()
 st.header("🤖 Análisis Histórico y Predicción (Random Forest)")
 
 @st.cache_data
-def cargar_y_entrenar_modelo_v2(filepath_excel, filepath_csv1, filepath_csv3):
+def cargar_y_entrenar_modelo_v2(filepath_excel, filepath_csv1, filepath_csv3, n_arboles):
     df_limpio = cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3)
     df_final = integrar_logica_negocio(df_limpio)
     
-    rf_model = entrenar_modelo_random_forest(df_final)
-    return df_final, rf_model
+    rf_model, rmse, mae, r2, seguridad_pct = entrenar_modelo_random_forest(df_final, n_arboles)
+    return df_final, rf_model, rmse, mae, r2, seguridad_pct
 
 archivo_excel = 'Datos-sensores-entrenamiento.xlsx'
 archivo_csv1 = 'SensorPESO1-20260310-2114.csv'
 archivo_csv3 = 'SensorPESO3-20260310-2122.csv'
 
+st.subheader("⚙️ Configuración del Modelo")
+n_arboles_select = st.selectbox("Cantidad de árboles en el Random Forest (n_estimators):", [50, 100, 150, 200, 300], index=1)
+
 if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.exists(archivo_csv3):
-    with st.spinner("Entrenando el modelo con datos históricos combinados..."):
-        df_historico, modelo_rf = cargar_y_entrenar_modelo_v2(archivo_excel, archivo_csv1, archivo_csv3)
+    with st.spinner(f"Entrenando el modelo con {n_arboles_select} árboles..."):
+        df_historico, modelo_rf, rmse, mae, r2, seguridad_pct = cargar_y_entrenar_modelo_v2(archivo_excel, archivo_csv1, archivo_csv3, n_arboles_select)
         
     st.success("¡Modelo Random Forest entrenado exitosamente con los datos históricos!")
     
     # Mostrar métricas del histórico
-    st.subheader("KPIs Históricos")
+    st.subheader("KPIs Históricos y Precisión del Modelo")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Días Analizados", f"{len(df_historico)}")
     col2.metric("Tela Consumida Estimada Total", f"{df_historico['tela_consumida_m'].sum():.2f} m")
     col3.metric("Pantalones Totales (Estimado)", f"{df_historico['pantalones_procesados'].sum():.0f} un")
-    col4.metric("Desperdicio Estimado Diario", f"{df_historico['desperdicio_estimado_g'].iloc[0]:.2f} g")
+    col4.metric("Seguridad de la Predicción", f"{seguridad_pct:.1f} %", "Basado en MAPE")
 
     # Gráficas
     st.subheader("Visualización del Análisis de Datos")

@@ -124,8 +124,8 @@ def integrar_logica_negocio(df):
     
     return df_diario
 
-def entrenar_modelo_random_forest(df_procesado):
-    print("Entrenando el modelo Predictivo Random Forest...")
+def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
+    print(f"Entrenando el modelo Predictivo Random Forest con {n_arboles} árboles...")
     
     # Variables predictoras (X) y variable objetivo (y)
     # Predeciremos el 'peso_total_g' del día actual basado SOLO en el pasado y tiempos
@@ -137,7 +137,7 @@ def entrenar_modelo_random_forest(df_procesado):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     
     # Configuración y entrenamiento del Random Forest
-    rf_model = RandomForestRegressor(n_estimators=100, max_depth=12, random_state=42)
+    rf_model = RandomForestRegressor(n_estimators=n_arboles, max_depth=12, random_state=42)
     rf_model.fit(X_train, y_train)
     
     # Predicción
@@ -148,10 +148,15 @@ def entrenar_modelo_random_forest(df_procesado):
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
     
+    # Calcular MAPE para el "Porcentaje de Seguridad"
+    mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
+    seguridad_pct = max(0.0, 100.0 - mape)
+    
     print("\n--- RESULTADOS DEL MODELO RANDOM FOREST ---")
     print(f"RMSE (Raíz del Error Cuadrático Medio): {rmse:.2f} g")
     print(f"MAE (Error Absoluto Medio): {mae:.2f} g")
     print(f"R² Score (Precisión): {r2:.4f}")
+    print(f"Seguridad de Predicción: {seguridad_pct:.2f}%")
     print("-------------------------------------------\n")
     
     # Visualización de la Predicción vs Realidad
@@ -175,7 +180,7 @@ def entrenar_modelo_random_forest(df_procesado):
     print("\nImportancia de las variables:")
     print(df_importancia.to_string(index=False))
     
-    return rf_model
+    return rf_model, rmse, mae, r2, seguridad_pct
 
 if __name__ == "__main__":
     archivo_excel = 'Datos-sensores-entrenamiento.xlsx'

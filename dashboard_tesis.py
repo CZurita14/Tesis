@@ -120,7 +120,6 @@ st.divider()
 # ==========================================
 st.header("🤖 Análisis Histórico y Predicción (Random Forest)")
 
-@st.cache_data
 def cargar_y_entrenar_modelo_v2(filepath_excel, filepath_csv1, filepath_csv3, n_arboles):
     df_limpio = cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3)
     df_final = integrar_logica_negocio(df_limpio)

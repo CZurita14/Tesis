@@ -6,30 +6,41 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
-def cargar_y_limpiar_datos(filepath):
-    print("Iniciando fase ETL (Extracción, Transformación y Carga)...")
-    # Cargar datos desde la hoja correspondiente
-    df = pd.read_excel(filepath, sheet_name='Hoja2')
+def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
+    print("Iniciando fase ETL (Extracción, Transformación y Carga) para Excel y CSVs...")
     
-    # Seleccionar las columnas relevantes (fecha y peso/valor registrado)
-    df = df[['created_at', 'value']].copy()
+    # Cargar datos desde Excel
+    df_excel = pd.read_excel(filepath_excel, sheet_name='Hoja2')
+    df_excel = df_excel[['created_at', 'value']].copy()
     
-    # Limpieza de valores nulos o inválidos
+    # Cargar datos desde CSVs
+    df_csv1 = pd.read_csv(filepath_csv1)[['created_at', 'value']].copy()
+    df_csv3 = pd.read_csv(filepath_csv3)[['created_at', 'value']].copy()
+    
+    # Unir todos los datos
+    df = pd.concat([df_excel, df_csv1, df_csv3], ignore_index=True)
+    
+    # Limpieza de valores nulos o numéricos inválidos
     df.dropna(inplace=True)
     df['value'] = pd.to_numeric(df['value'], errors='coerce')
     df.dropna(inplace=True)
     
-    # Filtrar valores negativos o anómalos
-    df = df[df['value'] > 0]
+    # Transformación: Valores absolutos para corregir taras negativas
+    df['value'] = df['value'].abs()
     
-    # Convertir a formato fecha y tiempo
+    # Filtrar ruido: Conservar solo pesos significativos (>= 50g)
+    # asumiendo que un pantalón es 500g, esto elimina el ruido de los sensores.
+    df = df[df['value'] >= 50]
+    
+    # Convertir a formato fecha y tiempo, manejando zonas horarias (UTC a local)
     df['created_at'] = pd.to_datetime(df['created_at'])
+    df['created_at'] = df['created_at'].apply(lambda x: x.tz_localize(None) if x.tzinfo else x)
     
     # Establecer el índice temporal
     df.set_index('created_at', inplace=True)
     df.sort_index(inplace=True)
     
-    print(f"Datos limpios: {len(df)} registros disponibles.")
+    print(f"Datos limpios: {len(df)} registros disponibles tras filtrado de ruido e integración.")
     return df
 
 def realizar_eda(df):
@@ -164,11 +175,13 @@ def entrenar_modelo_random_forest(df_procesado):
 
 if __name__ == "__main__":
     archivo_excel = 'Datos-sensores-entrenamiento.xlsx'
+    archivo_csv1 = 'SensorPESO1-20260310-2114.csv'
+    archivo_csv3 = 'SensorPESO3-20260310-2122.csv'
     
     print("=== PIPELINE DE PREDICCIÓN Y ANÁLISIS DE DATOS ===")
     try:
         # 1. Ejecutar ETL
-        df_limpio = cargar_y_limpiar_datos(archivo_excel)
+        df_limpio = cargar_y_limpiar_datos(archivo_excel, archivo_csv1, archivo_csv3)
         
         # 2. Ejecutar EDA
         realizar_eda(df_limpio)

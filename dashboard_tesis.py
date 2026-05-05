@@ -99,9 +99,9 @@ st.divider()
 st.header("🤖 Análisis Histórico y Predicción (Random Forest)")
 
 @st.cache_data
-def cargar_y_entrenar_modelo_v2(filepath):
+def cargar_y_entrenar_modelo_v2(filepath_excel, filepath_csv1, filepath_csv3):
     # Reutilizamos las funciones creadas en tu archivo modelo_prediccion.py
-    df_limpio = cargar_y_limpiar_datos(filepath)
+    df_limpio = cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3)
     df_final = integrar_logica_negocio(df_limpio)
     
     # Entrenar el modelo
@@ -109,10 +109,12 @@ def cargar_y_entrenar_modelo_v2(filepath):
     return df_final, rf_model
 
 archivo_excel = 'Datos-sensores-entrenamiento.xlsx'
+archivo_csv1 = 'SensorPESO1-20260310-2114.csv'
+archivo_csv3 = 'SensorPESO3-20260310-2122.csv'
 
-if os.path.exists(archivo_excel):
-    with st.spinner("Entrenando el modelo con datos históricos..."):
-        df_historico, modelo_rf = cargar_y_entrenar_modelo_v2(archivo_excel)
+if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.exists(archivo_csv3):
+    with st.spinner("Entrenando el modelo con datos históricos combinados..."):
+        df_historico, modelo_rf = cargar_y_entrenar_modelo_v2(archivo_excel, archivo_csv1, archivo_csv3)
         
     st.success("¡Modelo Random Forest entrenado exitosamente con los datos históricos!")
     
@@ -179,4 +181,4 @@ if os.path.exists(archivo_excel):
     st.success(f"💡 **Conclusión del Bosque:** Promediando los votos de TODOS los árboles entrenados, el modelo final dictamina la predicción de **{prediccion_futura[0]:.2f} gramos**.")
 
 else:
-    st.error(f"No se encontró el archivo {archivo_excel}. Por favor verifica que esté en la carpeta.")
+    st.error(f"Faltan archivos de datos. Por favor verifica que {archivo_excel}, {archivo_csv1} y {archivo_csv3} estén en la carpeta.")

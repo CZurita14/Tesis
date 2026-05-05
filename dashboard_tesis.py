@@ -154,16 +154,17 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     tab1, tab2, tab3 = st.tabs(["Serie de Tiempo Histórica", "Distribución del Peso", "Matriz de Correlación"])
     
     with tab1:
-        st.line_chart(df_historico['peso_total_g'])
+        st.line_chart(df_historico['peso_total_kg'])
         
     with tab2:
         fig, ax = plt.subplots(figsize=(8,4))
-        sns.histplot(df_historico['peso_total_g'], bins=30, kde=True, color='purple', ax=ax)
+        sns.histplot(df_historico['peso_total_kg'], bins=30, kde=True, color='purple', ax=ax)
+        ax.set_xlabel("Peso Total (kg)")
         st.pyplot(fig)
         
     with tab3:
         fig_corr, ax_corr = plt.subplots(figsize=(8,6))
-        cols_corr = ['peso_total_g', 'pantalones_procesados', 'tela_consumida_m', 'desperdicio_estimado_g']
+        cols_corr = ['peso_total_kg', 'pantalones_procesados', 'tela_consumida_m', 'desperdicio_estimado_g']
         matriz_corr = df_historico[cols_corr].corr()
         sns.heatmap(matriz_corr, annot=True, cmap='coolwarm', fmt=".2f", ax=ax_corr)
         st.pyplot(fig_corr)
@@ -176,12 +177,13 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     
     features_modelo = ['dia_semana', 'dia_mes', 'mes', 'peso_lag_1', 'peso_lag_2', 'peso_lag_3', 'media_movil_3d']
     
-    prediccion_futura = modelo_rf.predict(ultimo_dia[features_modelo])
+    prediccion_futura_kg = modelo_rf.predict(ultimo_dia[features_modelo])
     
-    pantalones_futuros = prediccion_futura[0] / 500
+    # 1 pantalón = 500g = 0.5kg
+    pantalones_futuros = prediccion_futura_kg[0] / 0.5
     tela_futura = pantalones_futuros * 1.20
     
-    st.info(f"**Predicción de Peso Total para el siguiente ciclo:** {prediccion_futura[0]:.2f} gramos")
+    st.info(f"**Predicción de Peso Total para el siguiente ciclo:** {prediccion_futura_kg[0]:.2f} kilogramos")
     st.write(f"Esto representaría un equivalente de **{pantalones_futuros:.1f} pantalones** producidos y **{tela_futura:.2f} metros** de tela consumida.")
     
     st.markdown("---")
@@ -194,9 +196,9 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     for i in range(num_arboles):
         # Utilizamos .values para evitar warnings de feature names en scikit-learn
         pred_arbol = modelo_rf.estimators_[i].predict(ultimo_dia[features_modelo].values)[0]
-        st.info(f"🌳 **Árbol {i+1}:** Analizó su parte de los datos y calculó **{pred_arbol:.2f} gramos**")
+        st.info(f"🌳 **Árbol {i+1}:** Analizó su parte de los datos y calculó **{pred_arbol:.2f} kg**")
         
-    st.success(f"💡 **Conclusión del Bosque:** Promediando los votos de TODOS los árboles entrenados, el modelo final dictamina la predicción de **{prediccion_futura[0]:.2f} gramos**.")
+    st.success(f"💡 **Conclusión del Bosque:** Promediando los votos de TODOS los árboles entrenados, el modelo final dictamina la predicción de **{prediccion_futura_kg[0]:.2f} kg**.")
 
 else:
     st.error(f"Faltan archivos de datos. Por favor verifica que {archivo_excel}, {archivo_csv1} y {archivo_csv3} estén en la carpeta.")

@@ -93,6 +93,7 @@ def integrar_logica_negocio(df):
     df_diario = df_diario[df_diario['value'] > 0].copy()
     
     df_diario.rename(columns={'value': 'peso_total_g'}, inplace=True)
+    df_diario['peso_total_kg'] = df_diario['peso_total_g'] / 1000.0
     
     # Cálculos derivados en base a la lógica de negocio
     # Cantidad estimada de pantalones procesados según el peso en sensores
@@ -111,13 +112,13 @@ def integrar_logica_negocio(df):
     df_diario['dia_mes'] = df_diario.index.day
     df_diario['mes'] = df_diario.index.month
     
-    # Creación de variables rezagadas (Lags) para predecir series de tiempo con Random Forest
-    df_diario['peso_lag_1'] = df_diario['peso_total_g'].shift(1)
-    df_diario['peso_lag_2'] = df_diario['peso_total_g'].shift(2)
-    df_diario['peso_lag_3'] = df_diario['peso_total_g'].shift(3)
+    # Creación de variables rezagadas (Lags) usando kilogramos
+    df_diario['peso_lag_1'] = df_diario['peso_total_kg'].shift(1)
+    df_diario['peso_lag_2'] = df_diario['peso_total_kg'].shift(2)
+    df_diario['peso_lag_3'] = df_diario['peso_total_kg'].shift(3)
     
-    # Media móvil de los últimos 3 días
-    df_diario['media_movil_3d'] = df_diario['peso_total_g'].rolling(window=3).mean()
+    # Media móvil de los últimos 3 días en kg
+    df_diario['media_movil_3d'] = df_diario['peso_total_kg'].rolling(window=3).mean()
     
     # Eliminar valores NaN generados por el lag y la media móvil
     df_diario.dropna(inplace=True)
@@ -128,10 +129,10 @@ def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
     print(f"Entrenando el modelo Predictivo Random Forest con {n_arboles} árboles...")
     
     # Variables predictoras (X) y variable objetivo (y)
-    # Predeciremos el 'peso_total_g' del día actual basado SOLO en el pasado y tiempos
+    # Predeciremos el 'peso_total_kg' del día actual basado SOLO en el pasado y tiempos
     features = ['dia_semana', 'dia_mes', 'mes', 'peso_lag_1', 'peso_lag_2', 'peso_lag_3', 'media_movil_3d']
     X = df_procesado[features]
-    y = df_procesado['peso_total_g']
+    y = df_procesado['peso_total_kg']
     
     # División de datos: 80% Entrenamiento, 20% Prueba (sin mezclar para mantener orden temporal)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
@@ -154,19 +155,19 @@ def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
     seguridad_pct = max(0.0, train_score * 100)
     
     print("\n--- RESULTADOS DEL MODELO RANDOM FOREST ---")
-    print(f"RMSE (Raíz del Error Cuadrático Medio): {rmse:.2f} g")
-    print(f"MAE (Error Absoluto Medio): {mae:.2f} g")
+    print(f"RMSE (Raíz del Error Cuadrático Medio): {rmse:.2f} kg")
+    print(f"MAE (Error Absoluto Medio): {mae:.2f} kg")
     print(f"R² Score (Precisión): {r2:.4f}")
     print(f"Seguridad de Predicción: {seguridad_pct:.2f}%")
     print("-------------------------------------------\n")
     
     # Visualización de la Predicción vs Realidad
     plt.figure(figsize=(12, 6))
-    plt.plot(y_test.index, y_test.values, label='Datos Reales', marker='o')
-    plt.plot(y_test.index, y_pred, label='Predicción Random Forest', marker='x', linestyle='--')
+    plt.plot(y_test.index, y_test.values, label='Datos Reales (kg)', marker='o')
+    plt.plot(y_test.index, y_pred, label='Predicción Random Forest (kg)', marker='x', linestyle='--')
     plt.title('Comparación: Predicción vs Valores Reales (Random Forest)', fontsize=14)
     plt.xlabel('Fecha', fontsize=12)
-    plt.ylabel('Peso Total (g)', fontsize=12)
+    plt.ylabel('Peso Total (kg)', fontsize=12)
     plt.legend()
     plt.tight_layout()
     plt.savefig('prediccion_random_forest.png')

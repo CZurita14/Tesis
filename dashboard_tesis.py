@@ -40,45 +40,51 @@ except Exception as e:
 # ==========================================
 st.header("📡 Monitoreo en Tiempo Real")
 
-col_btn, _ = st.columns([1, 4])
-if col_btn.button("🔄 Refrescar Datos en Vivo"):
-    # Limpia la cache forzando a reentrenar el modelo y actualizar el feed
-    st.cache_data.clear()
-
-if conexion_exitosa:
+@st.cache_data
+def obtener_llave_feed_correcta():
     try:
-        # Obtener lista de feeds disponibles
         feeds_disponibles = aio.feeds()
         nombres_feeds = [f.key for f in feeds_disponibles]
-        
-        # Intentar encontrar el feed correcto (peso, peso-1, o el primero que contenga 'peso')
         llave_feed = 'peso'
         if 'peso' not in nombres_feeds:
             coincidencias = [f for f in nombres_feeds if 'peso' in f.lower()]
             if coincidencias:
                 llave_feed = coincidencias[0]
             elif len(nombres_feeds) > 0:
-                # Si no hay nada con 'peso', tomar el primer feed disponible como fallback
                 llave_feed = nombres_feeds[0]
-        
-        feed_peso = aio.receive(llave_feed)
-        ultimo_peso_real = float(feed_peso.value)
-        
-        # Obtener los últimos datos en tiempo real (historial reciente)
-        datos_recientes = aio.data(llave_feed)
-        
-        # Lógica de Negocio básica para el dato actual
-        PESO_PANTALON = 500  # gramos
-        pantalones_actuales = ultimo_peso_real / PESO_PANTALON
-        
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Último Peso Registrado (g)", f"{ultimo_peso_real:.2f} g")
-        col2.metric("Equivalente en Pantalones", f"{pantalones_actuales:.2f} un")
-        col3.metric("Última Actualización", f"{feed_peso.created_at}")
-        st.caption(f"Leyendo desde el feed de Adafruit: '{llave_feed}'")
-        
-        # Visualización gráfica de los datos en tiempo real de Adafruit
-        if datos_recientes:
+        return llave_feed
+    except Exception:
+        return 'peso'
+
+if conexion_exitosa:
+    llave_feed = obtener_llave_feed_correcta()
+    
+    @st.fragment(run_every=4)
+    def render_realtime_dashboard():
+        try:
+            # ERROR SOLUCIONADO: Anteriormente se llamaba a aio.feeds(), aio.receive() y aio.data() en cada ciclo.
+            # Eso provocaba 3 peticiones cada 4 segundos (45 req/min), lo que excede la cuota de 30 req/min de Adafruit.
+            # Ahora solo llamamos a aio.data() 1 vez (15 req/min), optimizando el límite de la API.
+            datos_recientes = aio.data(llave_feed)
+            
+            if not datos_recientes:
+                st.warning(f"El feed '{llave_feed}' está vacío.")
+                return
+                
+            ultimo_dato = datos_recientes[0]
+            ultimo_peso_real = float(ultimo_dato.value)
+            
+            # Lógica de Negocio básica para el dato actual
+            PESO_PANTALON = 500  # gramos
+            pantalones_actuales = ultimo_peso_real / PESO_PANTALON
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Último Peso Registrado (g)", f"{ultimo_peso_real:.2f} g")
+            col2.metric("Equivalente en Pantalones", f"{pantalones_actuales:.2f} un")
+            col3.metric("Última Actualización", f"{ultimo_dato.created_at}")
+            st.caption(f"Leyendo desde el feed de Adafruit: '{llave_feed}' | 🔄 Auto-actualización cada 4s")
+            
+            # Visualización gráfica de los datos en tiempo real de Adafruit
             st.markdown("### 📈 Gráfica de Sensores en Tiempo Real")
             valores_rt = [float(d.value) for d in datos_recientes]
             fechas_rt = [pd.to_datetime(d.created_at) for d in datos_recientes]
@@ -87,9 +93,11 @@ if conexion_exitosa:
             # Ordenar cronológicamente
             df_rt = df_rt.sort_index()
             st.line_chart(df_rt)
-        
-    except RequestError as e:
-        st.warning(f"No se pudo obtener datos. Feeds disponibles en tu cuenta: {nombres_feeds if 'nombres_feeds' in locals() else 'Ninguno'}. Verifica tu configuración.")
+            
+        except RequestError as e:
+            st.warning(f"No se pudo obtener datos del feed '{llave_feed}'. Verifica tu configuración. Error: {e}")
+            
+    render_realtime_dashboard()
         
 st.divider()
 

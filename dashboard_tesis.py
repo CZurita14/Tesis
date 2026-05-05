@@ -186,7 +186,7 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     st.markdown("### 🌲 ¿Cómo funciona el 'Bosque Aleatorio' (Random Forest)?")
     st.write("Un *Random Forest* está compuesto por múltiples 'Árboles de Decisión'. Cada árbol observa una parte diferente de los datos históricos y genera su propio cálculo o 'voto'. Al final, el 'Bosque' promedia todos estos árboles para entregar una predicción mucho más robusta y evitar errores de picos extraños (0.00 o valores disparados).")
     
-    num_arboles = st.slider("Selecciona cuántos árboles individuales quieres observar por dentro (Máximo 4):", min_value=1, max_value=4, value=2)
+    num_arboles = st.slider("Selecciona cuántos árboles individuales quieres observar por dentro (Máximo 10):", min_value=1, max_value=10, value=5)
     
     st.write("**Cálculos internos de los árboles seleccionados:**")
     for i in range(num_arboles):

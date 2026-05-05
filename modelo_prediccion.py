@@ -87,7 +87,11 @@ def integrar_logica_negocio(df):
     # ---------------------------------------------
     
     # Agrupar los datos por día (agregación diaria para predecir a futuro)
-    df_diario = df.resample('D').agg({'value': 'sum'}).dropna()
+    df_diario = df.resample('D').agg({'value': 'sum'})
+    # CRÍTICO: resample('D') crea días con suma 0.0 si no hubo recolección de datos (sensores apagados).
+    # Debemos eliminar estos ceros falsos para que el modelo no aprenda que existen días de "0 producción" por error de muestreo.
+    df_diario = df_diario[df_diario['value'] > 0].copy()
+    
     df_diario.rename(columns={'value': 'peso_total_g'}, inplace=True)
     
     # Cálculos derivados en base a la lógica de negocio
@@ -133,7 +137,7 @@ def entrenar_modelo_random_forest(df_procesado):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     
     # Configuración y entrenamiento del Random Forest
-    rf_model = RandomForestRegressor(n_estimators=150, max_depth=10, random_state=42)
+    rf_model = RandomForestRegressor(n_estimators=100, max_depth=12, random_state=42)
     rf_model.fit(X_train, y_train)
     
     # Predicción

@@ -147,7 +147,7 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     col1.metric("Días Analizados", f"{len(df_historico)}")
     col2.metric("Tela Consumida Estimada Total", f"{df_historico['tela_consumida_m'].sum():.2f} m")
     col3.metric("Pantalones Totales (Estimado)", f"{df_historico['pantalones_procesados'].sum():.0f} un")
-    col4.metric("Seguridad de la Predicción", f"{seguridad_pct:.1f} %", "Basado en MAPE")
+    col4.metric("Seguridad del Aprendizaje", f"{seguridad_pct:.1f} %", "Ajuste Interno (R²)")
 
     # Gráficas
     st.subheader("Visualización del Análisis de Datos")

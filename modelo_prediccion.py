@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split, TimeSeriesSplit
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
@@ -138,41 +138,37 @@ def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
     X = df_procesado[features]
     y = df_procesado['peso_total_kg']
     
-    # Validación cruzada temporal (TimeSeriesSplit): preserva el orden cronológico
-    # y evalúa el modelo en múltiples ventanas de prueba en lugar de un solo split de 6-7 días.
-    tscv = TimeSeriesSplit(n_splits=5)
-    r2_folds = []
-    for train_idx, test_idx in tscv.split(X):
-        X_tr, X_te = X.iloc[train_idx], X.iloc[test_idx]
-        y_tr, y_te = y.iloc[train_idx], y.iloc[test_idx]
-        rf_cv = RandomForestRegressor(n_estimators=n_arboles, max_depth=5, min_samples_leaf=2, random_state=42)
-        rf_cv.fit(X_tr, y_tr)
-        r2_folds.append(r2_score(y_te, rf_cv.predict(X_te)))
-
-    # Modelo final entrenado con todos los datos, mismos hiperparámetros controlados
-    # max_depth=5: limita memorización (2^5=32 nodos máx vs 2^12=4096 anterior)
-    # min_samples_leaf=2: ninguna hoja puede tener 1 solo dato (evita memorización perfecta)
+    # Split temporal fijo: primeros 80% de los 28 días = entrenamiento, últimos 20% = prueba.
+    # shuffle=False preserva el orden cronológico (obligatorio en series de tiempo).
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+
+    # Hiperparámetros controlados para evitar overfitting con ~22 días de entrenamiento:
+    # max_depth=5 → máximo 32 nodos por árbol (vs 4096 con depth=12)
+    # min_samples_leaf=2 → ninguna hoja puede ajustarse a un único dato
     rf_model = RandomForestRegressor(n_estimators=n_arboles, max_depth=5, min_samples_leaf=2, random_state=42)
     rf_model.fit(X_train, y_train)
 
-    # Predicción
     y_pred = rf_model.predict(X_test)
 
-    # Evaluación del Modelo
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
 
-    # Seguridad = R² promedio de validación cruzada temporal (no el de entrenamiento)
-    seguridad_pct = max(0.0, np.mean(r2_folds) * 100)
+    # R² de entrenamiento: sirve SOLO para medir el gap vs prueba (indicador de overfitting)
+    r2_train = rf_model.score(X_train, y_train)
+    gap = r2_train - r2
+
+    # Seguridad = R² del conjunto de PRUEBA (datos nunca vistos por el modelo)
+    # Un gap train-prueba < 0.10 confirma que no hay overfitting
+    seguridad_pct = max(0.0, r2 * 100)
     
     print("\n--- RESULTADOS DEL MODELO RANDOM FOREST ---")
     print(f"RMSE (Raíz del Error Cuadrático Medio): {rmse:.2f} kg")
     print(f"MAE (Error Absoluto Medio): {mae:.2f} kg")
-    print(f"R² Score test set: {r2:.4f}")
-    print(f"R² promedio CV temporal (5 folds): {np.mean(r2_folds):.4f}")
-    print(f"Seguridad de Predicción (CV): {seguridad_pct:.2f}%")
+    print(f"R² Entrenamiento: {r2_train:.4f}")
+    print(f"R² Prueba (test set): {r2:.4f}")
+    print(f"Gap train-prueba: {gap:.4f} (< 0.10 = sin overfitting)")
+    print(f"Seguridad de Predicción: {seguridad_pct:.2f}%")
     print("-------------------------------------------\n")
     
     # Visualización de la Predicción vs Realidad

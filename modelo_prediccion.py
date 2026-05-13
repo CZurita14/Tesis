@@ -28,9 +28,9 @@ def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
     # Transformación: Valores absolutos para corregir taras negativas
     df['value'] = df['value'].abs()
     
-    # Filtrar ruido: Conservar solo pesos significativos (>= 50g)
-    # asumiendo que un pantalón es 500g, esto elimina el ruido de los sensores.
-    df = df[df['value'] >= 50]
+    # Filtrar ruido: Conservar solo pesos significativos entre 50g y 500g.
+    # <50g: ruido de tara del sensor vacío. >500g: picos anómalos del sensor (ej: -2464g → 2464g).
+    df = df[(df['value'] >= 50) & (df['value'] <= 500)]
     
     # Convertir a formato fecha y tiempo, manejando zonas horarias (UTC a local)
     df['created_at'] = pd.to_datetime(df['created_at'])
@@ -74,38 +74,42 @@ def integrar_logica_negocio(df):
     print("Integrando variables de negocio y preparación de Features para el modelo...")
     
     # ---- VARIABLES DE NEGOCIO PROPORCIONADAS ----
-    PESO_PANTALON_SECO_G = 500  # g
-    TELA_ADQUIRIDA_M = 9805.66  # metros
-    
-    # Desperdicio histórico: Octubre 2025 - Marzo 2026 (6 meses)
-    DESPERDICIO_TOTAL_KG = 16075  # kg
-    PROMEDIO_DESPERDICIO_MENSUAL_KG = DESPERDICIO_TOTAL_KG / 6
-    
-    # Desperdicio de papel mensual y tela por pantalón
-    RETAZO_PAPEL_PROM_M = 55    # Promedio entre 50 y 60 metros
-    TELA_POR_PANTALON_M = 1.20  # Promedio entre 1.10 y 1.30 metros
+    TELA_ADQUIRIDA_M = 9805.66        # metros de tela adquirida por mes
+    TELA_POR_PANTALON_M = 1.20        # metros de tela por pantalón (promedio 1.10–1.30)
+    DESPERDICIO_PROM_M = 45           # metros de tela desperdiciada por mes (rango: 40–50)
+    DENSIDAD_TELA_G_POR_M = 225       # gramos por metro lineal de tela
     # ---------------------------------------------
-    
-    # Agrupar los datos por día (agregación diaria para predecir a futuro)
-    df_diario = df.resample('D').agg({'value': 'sum'})
-    # CRÍTICO: resample('D') crea días con suma 0.0 si no hubo recolección de datos (sensores apagados).
-    # Debemos eliminar estos ceros falsos para que el modelo no aprenda que existen días de "0 producción" por error de muestreo.
+
+    # Métricas de negocio derivadas de las constantes anteriores
+    pantalones_por_mes = (TELA_ADQUIRIDA_M - DESPERDICIO_PROM_M) / TELA_POR_PANTALON_M
+    metros_desperdicio_por_pantalon = DESPERDICIO_PROM_M / pantalones_por_mes
+
+    # Factor de conversión: kg de desperdicio medido por el sensor → pantalones producidos
+    # Derivado de: metros_desperdicio = peso_g / DENSIDAD; pantalones = metros / metros_desperdicio_por_pantalon
+    factor_kg_a_pantalones = 1000.0 / (DENSIDAD_TELA_G_POR_M * metros_desperdicio_por_pantalon)
+
+    # Agregación diaria: MÁXIMO del peso sobre la báscula en el día.
+    # El sensor mide el peso ACTUAL en la báscula (medición de estado, no incremental).
+    # El pico diario equivale al mayor acumulado de retazos antes de vaciar la báscula,
+    # que es el desperdicio real generado en el día. Usar sum() multiplica ese peso
+    # por la cantidad de lecturas (~14 400/día) y produce valores absurdamente inflados.
+    df_diario = df.resample('D').agg({'value': 'max'})
     df_diario = df_diario[df_diario['value'] > 0].copy()
-    
+
     df_diario.rename(columns={'value': 'peso_total_g'}, inplace=True)
     df_diario['peso_total_kg'] = df_diario['peso_total_g'] / 1000.0
-    
-    # Cálculos derivados en base a la lógica de negocio
-    # Cantidad estimada de pantalones procesados según el peso en sensores
-    df_diario['pantalones_procesados'] = df_diario['peso_total_g'] / PESO_PANTALON_SECO_G
-    
-    # Estimación de la tela consumida para los pantalones procesados
+
+    # Metros de desperdicio diario medido por la báscula
+    df_diario['metros_desperdicio'] = df_diario['peso_total_g'] / DENSIDAD_TELA_G_POR_M
+
+    # Pantalones estimados a partir del desperdicio diario medido
+    df_diario['pantalones_procesados'] = df_diario['metros_desperdicio'] / metros_desperdicio_por_pantalon
+
+    # Tela consumida: producción neta (sin el desperdicio)
     df_diario['tela_consumida_m'] = df_diario['pantalones_procesados'] * TELA_POR_PANTALON_M
-    
-    # Ratio de desperdicio estimado (basado en el promedio mensual histórico)
-    # 1 mes promedio = 30 días aprox -> Promedio diario estimado
-    promedio_diario_desperdicio_g = (PROMEDIO_DESPERDICIO_MENSUAL_KG * 1000) / 30
-    df_diario['desperdicio_estimado_g'] = promedio_diario_desperdicio_g
+
+    # El sensor mide el desperdicio directamente; se registra como dato real (no estimado)
+    df_diario['desperdicio_estimado_g'] = df_diario['peso_total_g']
     
     # Variables temporales para el modelo de Machine Learning
     df_diario['dia_semana'] = df_diario.index.dayofweek
@@ -122,8 +126,8 @@ def integrar_logica_negocio(df):
     
     # Eliminar valores NaN generados por el lag y la media móvil
     df_diario.dropna(inplace=True)
-    
-    return df_diario
+
+    return df_diario, factor_kg_a_pantalones
 
 def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
     print(f"Entrenando el modelo Predictivo Random Forest con {n_arboles} árboles...")

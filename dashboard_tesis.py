@@ -122,10 +122,10 @@ st.header("🤖 Análisis Histórico y Predicción (Random Forest)")
 
 def cargar_y_entrenar_modelo_v2(filepath_excel, filepath_csv1, filepath_csv3, n_arboles):
     df_limpio = cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3)
-    df_final = integrar_logica_negocio(df_limpio)
-    
+    df_final, factor_kg_pantalones = integrar_logica_negocio(df_limpio)
+
     rf_model, rmse, mae, r2, seguridad_pct = entrenar_modelo_random_forest(df_final, n_arboles)
-    return df_final, rf_model, rmse, mae, r2, seguridad_pct
+    return df_final, rf_model, rmse, mae, r2, seguridad_pct, factor_kg_pantalones
 
 archivo_excel = 'Datos-sensores-entrenamiento.xlsx'
 archivo_csv1 = 'SensorPESO1-20260310-2114.csv'
@@ -136,7 +136,7 @@ n_arboles_select = st.selectbox("Cantidad de árboles en el Random Forest (n_est
 
 if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.exists(archivo_csv3):
     with st.spinner(f"Entrenando el modelo con {n_arboles_select} árboles..."):
-        df_historico, modelo_rf, rmse, mae, r2, seguridad_pct = cargar_y_entrenar_modelo_v2(archivo_excel, archivo_csv1, archivo_csv3, n_arboles_select)
+        df_historico, modelo_rf, rmse, mae, r2, seguridad_pct, factor_kg_pantalones = cargar_y_entrenar_modelo_v2(archivo_excel, archivo_csv1, archivo_csv3, n_arboles_select)
         
     st.success("¡Modelo Random Forest entrenado exitosamente con los datos históricos!")
     
@@ -179,8 +179,7 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     
     prediccion_futura_kg = modelo_rf.predict(ultimo_dia[features_modelo])
     
-    # 1 pantalón = 500g = 0.5kg
-    pantalones_futuros = prediccion_futura_kg[0] / 0.5
+    pantalones_futuros = prediccion_futura_kg[0] * factor_kg_pantalones
     tela_futura = pantalones_futuros * 1.20
     
     st.info(f"**Predicción de Peso Total para el siguiente ciclo:** {prediccion_futura_kg[0]:.2f} kilogramos")

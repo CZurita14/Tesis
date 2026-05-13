@@ -40,9 +40,10 @@ def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
     # Transformación: Valores absolutos para corregir taras negativas
     df['value'] = df['value'].abs()
     
-    # Filtrar ruido: Conservar solo pesos significativos entre 50g y 500g.
-    # <50g: ruido de tara del sensor vacío. >500g: picos anómalos del sensor (ej: -2464g → 2464g).
-    df = df[(df['value'] >= 50) & (df['value'] <= 500)]
+    # Filtrar ruido: Conservar solo pesos significativos entre 50g y 2000g.
+    # <50g: ruido de tara del sensor vacío. >2000g: picos anómalos (ej: SensorPESO1 tenía -2464g → 2464g).
+    # El tope en 500g era demasiado restrictivo: Datos-sensores-entrenamiento tiene lecturas legítimas hasta 1673g.
+    df = df[(df['value'] >= 50) & (df['value'] <= 2000)]
     
     # Convertir a formato fecha y tiempo, manejando zonas horarias (UTC a local)
     df['created_at'] = pd.to_datetime(df['created_at'])

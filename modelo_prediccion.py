@@ -180,9 +180,10 @@ def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
     r2_train = rf_model.score(X_train, y_train)
     gap = r2_train - r2
 
-    # Seguridad = R² del conjunto de PRUEBA (datos nunca vistos por el modelo)
-    # Un gap train-prueba < 0.10 confirma que no hay overfitting
-    seguridad_pct = max(0.0, r2 * 100)
+    # Seguridad = precisión basada en MAPE (error porcentual absoluto medio)
+    # MAPE mide el error relativo promedio; (1 - MAPE) * 100 da la exactitud porcentual
+    mape = np.mean(np.abs((y_test - y_pred) / y_test))
+    seguridad_pct = max(0.0, (1 - mape) * 100)
     
     print("\n--- RESULTADOS DEL MODELO RANDOM FOREST ---")
     print(f"RMSE (Raíz del Error Cuadrático Medio): {rmse:.2f} kg")

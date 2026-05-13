@@ -133,11 +133,20 @@ def integrar_logica_negocio(df):
     df_diario['peso_lag_1'] = df_diario['peso_total_kg'].shift(1)
     df_diario['peso_lag_2'] = df_diario['peso_total_kg'].shift(2)
     df_diario['peso_lag_3'] = df_diario['peso_total_kg'].shift(3)
-    
+
     # Media móvil de los últimos 3 días en kg
     df_diario['media_movil_3d'] = df_diario['peso_total_kg'].rolling(window=3).mean()
-    
-    # Eliminar valores NaN generados por el lag y la media móvil
+
+    # Invalidar lags contaminados por brechas temporales > 2 días entre registros.
+    # Sin esto, el lag del día siguiente a una brecha de 21 días apuntaría a datos
+    # de 3 semanas atrás, enseñando al modelo patrones falsos.
+    cols_lag = ['peso_lag_1', 'peso_lag_2', 'peso_lag_3', 'media_movil_3d']
+    diff_dias = df_diario.index.to_series().diff().dt.days.fillna(0)
+    for k in range(3):
+        filas_invalidas = diff_dias.shift(k, fill_value=0) > 2
+        df_diario.loc[filas_invalidas, cols_lag] = np.nan
+
+    # Eliminar filas con NaN (inicio de serie + días posteriores a brechas)
     df_diario.dropna(inplace=True)
 
     return df_diario, factor_kg_a_pantalones

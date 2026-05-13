@@ -1,3 +1,5 @@
+import os
+import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,17 +10,27 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
     print("Iniciando fase ETL (Extracción, Transformación y Carga) para Excel y CSVs...")
-    
-    # Cargar datos desde Excel
-    df_excel = pd.read_excel(filepath_excel, sheet_name='Hoja2')
-    df_excel = df_excel[['created_at', 'value']].copy()
-    
+
+    # Cargar todos los archivos Datos*.xlsx del directorio automáticamente.
+    # Al agregar un nuevo export de Adafruit IO con ese nombre, se incluye sin cambiar código.
+    directorio = os.path.dirname(os.path.abspath(filepath_excel))
+    archivos_excel = sorted(glob.glob(os.path.join(directorio, 'Datos*.xlsx')))
+    dataframes = []
+    for archivo in archivos_excel:
+        try:
+            df_tmp = pd.read_excel(archivo, sheet_name='Hoja2')[['created_at', 'value']].copy()
+            dataframes.append(df_tmp)
+            print(f"  Cargado: {os.path.basename(archivo)} ({len(df_tmp)} filas)")
+        except Exception:
+            pass
+
     # Cargar datos desde CSVs
     df_csv1 = pd.read_csv(filepath_csv1)[['created_at', 'value']].copy()
     df_csv3 = pd.read_csv(filepath_csv3)[['created_at', 'value']].copy()
-    
+    dataframes.extend([df_csv1, df_csv3])
+
     # Unir todos los datos
-    df = pd.concat([df_excel, df_csv1, df_csv3], ignore_index=True)
+    df = pd.concat(dataframes, ignore_index=True)
     
     # Limpieza de valores nulos o numéricos inválidos
     df.dropna(inplace=True)

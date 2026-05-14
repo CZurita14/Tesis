@@ -172,17 +172,48 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
         st.line_chart(df_historico['peso_total_kg'])
         
     with tab2:
-        fig, ax = plt.subplots(figsize=(8,4))
-        sns.histplot(df_historico['peso_total_kg'], bins=30, kde=True, color='purple', ax=ax)
-        ax.set_xlabel("Peso Total (kg)")
-        st.pyplot(fig)
-        
+        col_dist, _ = st.columns([1, 1])
+        with col_dist:
+            fig, ax = plt.subplots(figsize=(5, 3))
+            sns.histplot(df_historico['peso_total_kg'], bins=20, kde=True, color='#6A0DAD', ax=ax)
+            ax.set_xlabel("Peso Total (kg)", fontsize=10)
+            ax.set_ylabel("Frecuencia", fontsize=10)
+            ax.set_title("Distribución del Peso Diario", fontsize=11, fontweight='bold')
+            ax.tick_params(labelsize=9)
+            plt.tight_layout()
+            st.pyplot(fig)
+
     with tab3:
-        fig_corr, ax_corr = plt.subplots(figsize=(8,6))
-        cols_corr = ['peso_total_kg', 'pantalones_procesados', 'tela_consumida_m', 'desperdicio_estimado_g']
-        matriz_corr = df_historico[cols_corr].corr()
-        sns.heatmap(matriz_corr, annot=True, cmap='coolwarm', fmt=".2f", ax=ax_corr)
-        st.pyplot(fig_corr)
+        col_corr, _ = st.columns([1, 1])
+        with col_corr:
+            etiquetas = {
+                'peso_total_kg': 'Peso\n(kg)',
+                'pantalones_procesados': 'Pantalones\n(un)',
+                'tela_consumida_m': 'Tela\n(m)',
+                'desperdicio_estimado_g': 'Desperdicio\n(g)'
+            }
+            cols_corr = list(etiquetas.keys())
+            matriz_corr = df_historico[cols_corr].corr()
+            matriz_corr.columns = list(etiquetas.values())
+            matriz_corr.index = list(etiquetas.values())
+
+            fig_corr, ax_corr = plt.subplots(figsize=(5, 4))
+            sns.heatmap(
+                matriz_corr,
+                annot=True,
+                fmt=".2f",
+                cmap='RdYlGn',
+                vmin=-1, vmax=1,
+                linewidths=0.8,
+                linecolor='white',
+                square=True,
+                annot_kws={'size': 11, 'weight': 'bold'},
+                ax=ax_corr
+            )
+            ax_corr.set_title("Correlación entre Variables", fontsize=11, fontweight='bold', pad=10)
+            ax_corr.tick_params(labelsize=9)
+            plt.tight_layout()
+            st.pyplot(fig_corr)
         
     # Zona de predicción
     st.subheader("🔮 Predicción a Futuro")

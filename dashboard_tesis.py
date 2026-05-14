@@ -140,6 +140,13 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
         
     st.success("¡Modelo Random Forest entrenado exitosamente con los datos históricos!")
     
+    # CO₂ etapa fabricación: ~20% del ciclo de vida completo (32–33.4 kg CO₂/jean denim)
+    CO2_POR_PANTALON_KG = 6.5
+    total_pantalones = df_historico['pantalones_procesados'].sum()
+    co2_total_kg = total_pantalones * CO2_POR_PANTALON_KG
+    co2_evitado_kg = co2_total_kg * 0.10
+    co2_diario_kg = co2_total_kg / len(df_historico)
+
     # Mostrar métricas del histórico
     st.subheader("KPIs Históricos y Precisión del Modelo")
     col1, col2, col3, col4 = st.columns(4)
@@ -147,6 +154,14 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     col2.metric("Tela Consumida Estimada Total", f"{df_historico['tela_consumida_m'].sum():.2f} m")
     col3.metric("Pantalones Totales (Estimado)", f"{df_historico['pantalones_procesados'].sum():.0f} un")
     col4.metric("Seguridad del Aprendizaje", f"{seguridad_pct:.1f} %", "Ajuste Interno (R²)")
+
+    st.subheader("🌱 Huella de Carbono — Etapa de Fabricación")
+    st.caption("Basado en 6.5 kg CO₂ por jean (≈20% del ciclo de vida completo de 32–33.4 kg, etapa de confección y materia prima)")
+    col5, col6, col7, col8 = st.columns(4)
+    col5.metric("CO₂ Total del Período", f"{co2_total_kg:.1f} kg")
+    col6.metric("CO₂ por Jean (fabricación)", "6.5 kg", "~20% ciclo de vida")
+    col7.metric("CO₂ evitado si −10% desperdicio", f"{co2_evitado_kg:.1f} kg")
+    col8.metric("Intensidad CO₂ diaria", f"{co2_diario_kg:.1f} kg/día")
 
     # Gráficas
     st.subheader("Visualización del Análisis de Datos")

@@ -7,3 +7,4 @@ scikit-learn
 adafruit-io
 python-dotenv
 openpyxl
+reportlab

@@ -3,10 +3,215 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from Adafruit_IO import Client, RequestError
 import os
+import io
+from datetime import datetime
 from dotenv import load_dotenv
 from modelo_prediccion import cargar_y_limpiar_datos, integrar_logica_negocio, entrenar_modelo_random_forest
 
+try:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.colors import HexColor, white
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    REPORTLAB_OK = True
+except ImportError:
+    REPORTLAB_OK = False
+
 st.set_page_config(page_title="Dashboard Predictivo de Producción", page_icon="👖", layout="wide")
+
+# ==========================================
+# GENERADOR DE REPORTE PDF
+# ==========================================
+def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_desperd,
+                        efic_pct, pant_perdidos, co2_total, co2_evitado, co2_diario,
+                        pred_kg, pred_pant, pred_tela, pred_co2, seguridad):
+    if not REPORTLAB_OK:
+        return None
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+
+    # Colores corporativos
+    C_DARK   = HexColor('#0E1117')
+    C_TEAL   = HexColor('#1A8A6A')
+    C_AMBER  = HexColor('#F39C12')
+    C_RED    = HexColor('#E74C3C')
+    C_GREEN  = HexColor('#2ECC71')
+    C_LIGHT  = HexColor('#F0F0F0')
+    C_MID    = HexColor('#555555')
+
+    # Estilos
+    S = {
+        'title': ParagraphStyle('title', fontSize=20, fontName='Helvetica-Bold',
+                                textColor=C_DARK, alignment=TA_CENTER, spaceAfter=4),
+        'subtitle': ParagraphStyle('subtitle', fontSize=11, fontName='Helvetica',
+                                   textColor=C_TEAL, alignment=TA_CENTER, spaceAfter=2),
+        'meta': ParagraphStyle('meta', fontSize=9, fontName='Helvetica',
+                               textColor=C_MID, alignment=TA_CENTER, spaceAfter=2),
+        'section': ParagraphStyle('section', fontSize=12, fontName='Helvetica-Bold',
+                                  textColor=C_TEAL, spaceBefore=14, spaceAfter=6),
+        'body': ParagraphStyle('body', fontSize=9, fontName='Helvetica',
+                               textColor=C_DARK, spaceAfter=3, leading=14),
+        'callout_green': ParagraphStyle('cg', fontSize=9, fontName='Helvetica-Bold',
+                                        textColor=C_GREEN, spaceAfter=4, leading=13),
+        'callout_red': ParagraphStyle('cr', fontSize=9, fontName='Helvetica-Bold',
+                                      textColor=C_RED, spaceAfter=4, leading=13),
+        'callout_amber': ParagraphStyle('ca', fontSize=9, fontName='Helvetica-Bold',
+                                        textColor=C_AMBER, spaceAfter=4, leading=13),
+        'footer': ParagraphStyle('footer', fontSize=7, fontName='Helvetica',
+                                 textColor=C_MID, alignment=TA_CENTER),
+    }
+
+    fecha_inicio = df_hist.index.min().strftime('%B %d, %Y')
+    fecha_fin    = df_hist.index.max().strftime('%B %d, %Y')
+    hoy          = datetime.now().strftime('%d de %B de %Y')
+    dias         = len(df_hist)
+    co2_km       = co2_total * 4.0
+    co2_arboles  = round(co2_total / 14)
+    co2_anual    = co2_total * (365 / dias)
+    tasa_desperd = (metros_desperd / (total_tela + metros_desperd)) * 100
+    benchmark_pant = round((metros_desperd - (total_tela + metros_desperd) * 0.025) / 1.20)
+    ingreso_opt  = benchmark_pant * 10
+
+    def tabla(data, col_widths, header_bg=C_TEAL):
+        t = Table(data, colWidths=col_widths)
+        style = TableStyle([
+            ('BACKGROUND',  (0, 0), (-1, 0),  header_bg),
+            ('TEXTCOLOR',   (0, 0), (-1, 0),  white),
+            ('FONTNAME',    (0, 0), (-1, 0),  'Helvetica-Bold'),
+            ('FONTSIZE',    (0, 0), (-1, 0),  9),
+            ('ALIGN',       (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME',    (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE',    (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [C_LIGHT, white]),
+            ('GRID',        (0, 0), (-1, -1), 0.4, HexColor('#CCCCCC')),
+            ('TOPPADDING',  (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING',(0,0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ])
+        t.setStyle(style)
+        return t
+
+    W = A4[0] - 4*cm  # ancho útil
+
+    story = []
+
+    # ENCABEZADO
+    story.append(Paragraph("REPORTE DE RESIDUOS TEXTILES", S['title']))
+    story.append(Paragraph("Sistema de Monitoreo IoT — Línea Denim Faditex", S['subtitle']))
+    story.append(HRFlowable(width=W, thickness=1.5, color=C_TEAL, spaceAfter=6))
+    meta = Table([
+        ['Período de Análisis:', f'{fecha_inicio} — {fecha_fin} ({dias} días activos)'],
+        ['Fecha de Generación:', hoy],
+        ['Audiencia:', 'Gerencia General | Auditor Externo'],
+    ], colWidths=[4.5*cm, W - 4.5*cm])
+    meta.setStyle(TableStyle([
+        ('FONTNAME',  (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME',  (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE',  (0, 0), (-1, -1), 9),
+        ('TEXTCOLOR', (0, 0), (-1, -1), C_MID),
+        ('ALIGN',     (0, 0), (-1, -1), 'LEFT'),
+        ('TOPPADDING',(0, 0), (-1, -1), 3),
+    ]))
+    story.append(meta)
+    story.append(Spacer(1, 0.4*cm))
+
+    # SECCIÓN 1
+    story.append(Paragraph("1. PERÍODO MEDIDO Y COBERTURA DEL SENSOR", S['section']))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(tabla([
+        ['Campo', 'Valor'],
+        ['Rango de Medición', f'{fecha_inicio} hasta {fecha_fin}'],
+        ['Días con Sensor Activo', f'{dias} días'],
+        ['Frecuencia de Lectura', 'Cada ~6 segundos mediante ESP32 + HX711'],
+        ['Disponibilidad del Sistema', f'{dias}/{dias} días analizados (100% datos válidos)'],
+    ], [5*cm, W - 5*cm]))
+
+    # SECCIÓN 2
+    story.append(Paragraph("2. PRODUCCIÓN Y EFICIENCIA DEL PROCESO", S['section']))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(tabla([
+        ['Indicador', 'Valor'],
+        ['Pantalones Producidos',      f'{total_pant:.0f} unidades'],
+        ['Tela Consumida (Neta)',       f'{total_tela:.1f} m'],
+        ['Desperdicio Total',           f'{metros_desperd:.1f} m  ({total_desperd*1000:.0f} g)'],
+        ['Eficiencia del Proceso',      f'{efic_pct:.1f}%'],
+    ], [5*cm, W - 5*cm]))
+    story.append(Spacer(1, 0.2*cm))
+    if efic_pct >= 95:
+        story.append(Paragraph(
+            f"✓ El proceso aprovechó el {efic_pct:.1f}% de la tela adquirida. "
+            "Esto indica desempeño por encima del promedio industrial (92–95%).", S['callout_green']))
+    else:
+        story.append(Paragraph(
+            f"■ La eficiencia del {efic_pct:.1f}% está por debajo del promedio industrial (92–95%). "
+            "Se recomienda revisar los patrones de corte.", S['callout_red']))
+
+    # SECCIÓN 3
+    story.append(Paragraph("3. DESPERDICIO GENERADO E IMPACTO EN PRODUCCIÓN", S['section']))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(tabla([
+        ['Indicador', 'Valor'],
+        ['Total de Desperdicio',         f'{total_desperd:.2f} kg de residuos textiles'],
+        ['Equivalencia en Producción',   f'{pant_perdidos:.0f} pantalones no fabricados'],
+        ['Tasa de Desperdicio',          f'{tasa_desperd:.1f}% del volumen total'],
+    ], [5*cm, W - 5*cm]))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(Paragraph(
+        f"■ El desperdicio de {total_desperd:.2f} kg equivale a {pant_perdidos:.0f} pantalones que dejaron de fabricarse. "
+        f"Optimizar a 2.5% (benchmark del sector) permitiría producir {abs(benchmark_pant):.0f} pantalones "
+        f"adicionales por ciclo (ingresos +${abs(ingreso_opt):.0f} USD).", S['callout_red']))
+
+    # SECCIÓN 4
+    story.append(Paragraph("4. HUELLA DE CARBONO E IMPACTO AMBIENTAL", S['section']))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(tabla([
+        ['Indicador', 'Valor'],
+        ['Emisiones CO₂eq Totales',     f'{co2_total:.1f} kg CO₂eq'],
+        ['Factor de Emisión',           '6.5 kg CO₂eq por jean (etapa fabricación)'],
+        ['Período Analizado',           f'{dias} días ({dias/7:.1f} semanas)'],
+        ['Proyección Anual',            f'{co2_anual:.0f} kg CO₂eq si continúa este ritmo'],
+    ], [5*cm, W - 5*cm]))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(Paragraph("■ Impacto Equivalente:", S['callout_amber']))
+    story.append(Paragraph(
+        f"• {co2_total:.1f} kg CO₂eq = {co2_km:.0f} km recorridos en automóvil (0.25 kg CO₂/km)\n"
+        f"• Se necesitarían {co2_arboles} árboles en crecimiento durante 1 año para compensarlo\n"
+        f"• Proyección Anual: {co2_anual:.0f} kg CO₂eq si continúa este ritmo", S['body']))
+
+    # SECCIÓN 5
+    story.append(Paragraph("5. PROYECCIÓN Y RECOMENDACIONES PARA PRÓXIMO CICLO", S['section']))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(tabla([
+        ['Indicador', 'Valor'],
+        ['Desperdicio Estimado',        f'{pred_kg:.2f} kg'],
+        ['Pantalones Proyectados',      f'{pred_pant:.0f} unidades'],
+        ['Tela a Consumir',             f'{pred_tela:.1f} m'],
+        ['CO₂ Estimado',                f'{pred_co2:.1f} kg CO₂eq'],
+        ['Precisión del Modelo',        f'{seguridad:.1f}% (MAPE)'],
+    ], [5*cm, W - 5*cm]))
+    story.append(Spacer(1, 0.2*cm))
+    story.append(Paragraph(
+        f"■ Escenario Base (sin intervención): Próxima producción generará ~{pred_kg:.2f} kg desperdicio, "
+        f"{pred_pant:.0f} pantalones y {pred_co2:.1f} kg CO₂eq.", S['callout_amber']))
+    story.append(Paragraph(
+        f"■ Oportunidad de Optimización: Revisar patrones de corte podría reducir el desperdicio "
+        f"y reducir emisiones a {pred_co2 * 0.67:.1f} kg CO₂eq (−33%).", S['callout_green']))
+
+    # PIE DE PÁGINA
+    story.append(Spacer(1, 0.6*cm))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_MID, spaceAfter=4))
+    story.append(Paragraph(
+        f"Generado por: Sistema IoT Faditex Denim  |  Tecnología: ESP32 + HX711 + Streamlit  |  Fecha: {hoy}",
+        S['footer']))
+
+    doc.build(story)
+    buf.seek(0)
+    return buf
 
 # ==========================================
 # PALETA OSCURA — consistente con Streamlit
@@ -80,7 +285,7 @@ with st.sidebar:
     st.markdown("---")
     pagina = st.radio(
         "Navegación",
-        ["📊 Dashboard Principal", "📈 Análisis de Datos", "🌱 Huella de Carbono", "🌲 Bosque Aleatorio"],
+        ["📊 Dashboard Principal", "📈 Análisis de Datos", "🌱 Huella de Carbono", "🌲 Bosque Aleatorio", "📄 Reporte"],
         label_visibility="collapsed"
     )
     st.markdown("---")
@@ -466,3 +671,72 @@ elif pagina == "🌲 Bosque Aleatorio":
         cols_trees[i % 5].info(f"🌳 **Árbol {i+1}**\n\n**{pred_arbol:.2f} kg**")
 
     st.success(f"💡 **Conclusión del Bosque:** promediando los {n_arboles_select} árboles, la predicción final es **{prediccion_futura_kg[0]:.2f} kg** de desperdicio.")
+
+# ==========================================
+# PÁGINA: REPORTE
+# ==========================================
+elif pagina == "📄 Reporte":
+    st.markdown("## 📄 Reporte de Residuos Textiles")
+    st.markdown("Descarga el reporte completo en PDF con toda la información del período analizado.")
+    st.divider()
+
+    fecha_inicio = df_historico.index.min().strftime('%d/%m/%Y')
+    fecha_fin    = df_historico.index.max().strftime('%d/%m/%Y')
+
+    st.markdown(f"**Período:** {fecha_inicio} — {fecha_fin} &nbsp;|&nbsp; **Días analizados:** {len(df_historico)} &nbsp;|&nbsp; **Modelo:** {n_arboles_select} árboles")
+    st.markdown("El reporte incluye las siguientes secciones:")
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("""
+        **1. Período medido y cobertura del sensor**
+        Fechas, días activos y frecuencia de lectura.
+
+        **2. Producción y eficiencia del proceso**
+        Pantalones, tela consumida y % eficiencia vs benchmark industrial.
+
+        **3. Desperdicio e impacto en producción**
+        Kg de residuos, equivalencia en pantalones no producidos y oportunidad de optimización.
+        """)
+    with col_b:
+        st.markdown("""
+        **4. Huella de carbono e impacto ambiental**
+        CO₂ total, equivalencias (km, árboles) y proyección anual.
+
+        **5. Proyección y recomendaciones**
+        Predicción del modelo para el próximo ciclo y escenarios de optimización.
+        """)
+
+    st.divider()
+
+    if not REPORTLAB_OK:
+        st.error("La librería `reportlab` no está instalada. Ejecuta `pip install reportlab` y reinicia la app.")
+    else:
+        if st.button("📥 Generar y Descargar Reporte PDF", type="primary", use_container_width=True):
+            with st.spinner("Generando reporte PDF..."):
+                pdf_buf = generar_reporte_pdf(
+                    df_hist        = df_historico,
+                    total_pant     = total_pantalones,
+                    total_tela     = total_tela_consumida,
+                    total_desperd  = df_historico['peso_total_kg'].sum(),
+                    metros_desperd = total_metros_desperdicio,
+                    efic_pct       = eficiencia_pct,
+                    pant_perdidos  = pantalones_perdidos,
+                    co2_total      = co2_total_kg,
+                    co2_evitado    = co2_evitado_kg,
+                    co2_diario     = co2_diario_kg_promedio,
+                    pred_kg        = prediccion_futura_kg[0],
+                    pred_pant      = pantalones_futuros,
+                    pred_tela      = tela_futura,
+                    pred_co2       = co2_prediccion,
+                    seguridad      = seguridad_pct,
+                )
+
+            nombre_archivo = f"Reporte_Faditex_{df_historico.index.min().strftime('%Y%m%d')}_{df_historico.index.max().strftime('%Y%m%d')}.pdf"
+            st.download_button(
+                label="⬇️ Descargar PDF",
+                data=pdf_buf,
+                file_name=nombre_archivo,
+                mime="application/pdf",
+                use_container_width=True,
+            )

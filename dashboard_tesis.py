@@ -47,9 +47,9 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
     # Estilos
     S = {
         'title': ParagraphStyle('title', fontSize=20, fontName='Helvetica-Bold',
-                                textColor=C_DARK, alignment=TA_CENTER, spaceAfter=4),
+                                textColor=C_DARK, alignment=TA_CENTER, spaceAfter=10),
         'subtitle': ParagraphStyle('subtitle', fontSize=11, fontName='Helvetica',
-                                   textColor=C_TEAL, alignment=TA_CENTER, spaceAfter=2),
+                                   textColor=C_TEAL, alignment=TA_CENTER, spaceAfter=10),
         'meta': ParagraphStyle('meta', fontSize=9, fontName='Helvetica',
                                textColor=C_MID, alignment=TA_CENTER, spaceAfter=2),
         'section': ParagraphStyle('section', fontSize=12, fontName='Helvetica-Bold',

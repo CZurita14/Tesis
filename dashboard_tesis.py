@@ -55,13 +55,13 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
         'section': ParagraphStyle('section', fontSize=12, fontName='Helvetica-Bold',
                                   textColor=C_TEAL, spaceBefore=14, spaceAfter=6),
         'body': ParagraphStyle('body', fontSize=9, fontName='Helvetica',
-                               textColor=C_DARK, spaceAfter=3, leading=14),
+                               textColor=C_DARK, spaceAfter=6, leading=16),
         'callout_green': ParagraphStyle('cg', fontSize=9, fontName='Helvetica-Bold',
-                                        textColor=C_GREEN, spaceAfter=4, leading=13),
+                                        textColor=C_GREEN, spaceAfter=8, leading=16),
         'callout_red': ParagraphStyle('cr', fontSize=9, fontName='Helvetica-Bold',
-                                      textColor=C_RED, spaceAfter=4, leading=13),
+                                      textColor=C_RED, spaceAfter=8, leading=16),
         'callout_amber': ParagraphStyle('ca', fontSize=9, fontName='Helvetica-Bold',
-                                        textColor=C_AMBER, spaceAfter=4, leading=13),
+                                        textColor=C_AMBER, spaceAfter=6, leading=16),
         'footer': ParagraphStyle('footer', fontSize=7, fontName='Helvetica',
                                  textColor=C_MID, alignment=TA_CENTER),
     }
@@ -171,17 +171,19 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
     story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
     story.append(tabla([
         ['Indicador', 'Valor'],
-        ['Emisiones CO₂eq Totales',     f'{co2_total:.1f} kg CO₂eq'],
-        ['Factor de Emisión',           '6.5 kg CO₂eq por jean (etapa fabricación)'],
-        ['Período Analizado',           f'{dias} días ({dias/7:.1f} semanas)'],
-        ['Proyección Anual',            f'{co2_anual:.0f} kg CO₂eq si continúa este ritmo'],
+        ['Emisiones CO2eq Totales',     f'{co2_total:.1f} kg CO2eq'],
+        ['Factor de Emision',           '6.5 kg CO2eq por jean (etapa fabricacion)'],
+        ['Periodo Analizado',           f'{dias} dias ({dias/7:.1f} semanas)'],
+        ['Proyeccion Anual',            f'{co2_anual:.0f} kg CO2eq si continua este ritmo'],
     ], [5*cm, W - 5*cm]))
-    story.append(Spacer(1, 0.2*cm))
-    story.append(Paragraph("■ Impacto Equivalente:", S['callout_amber']))
+    story.append(Spacer(1, 0.3*cm))
+    story.append(Paragraph("&#9632; Impacto Equivalente:", S['callout_amber']))
     story.append(Paragraph(
-        f"• {co2_total:.1f} kg CO₂eq = {co2_km:.0f} km recorridos en automóvil (0.25 kg CO₂/km)\n"
-        f"• Se necesitarían {co2_arboles} árboles en crecimiento durante 1 año para compensarlo\n"
-        f"• Proyección Anual: {co2_anual:.0f} kg CO₂eq si continúa este ritmo", S['body']))
+        f"&#8226; {co2_total:.1f} kg CO<sub>2</sub>eq = {co2_km:.0f} km recorridos en "
+        f"automovil (0.25 kg CO<sub>2</sub>/km)<br/>"
+        f"&#8226; Se necesitarian {co2_arboles} arboles en crecimiento durante 1 ano para compensarlo<br/>"
+        f"&#8226; Proyeccion Anual: {co2_anual:.0f} kg CO<sub>2</sub>eq si continua este ritmo",
+        S['body']))
 
     # SECCIÓN 5
     story.append(Paragraph("5. PROYECCIÓN Y RECOMENDACIONES PARA PRÓXIMO CICLO", S['section']))
@@ -191,16 +193,18 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
         ['Desperdicio Estimado',        f'{pred_kg:.2f} kg'],
         ['Pantalones Proyectados',      f'{pred_pant:.0f} unidades'],
         ['Tela a Consumir',             f'{pred_tela:.1f} m'],
-        ['CO₂ Estimado',                f'{pred_co2:.1f} kg CO₂eq'],
-        ['Precisión del Modelo',        f'{seguridad:.1f}% (MAPE)'],
+        ['CO2 Estimado',                f'{pred_co2:.1f} kg CO2eq'],
+        ['Precision del Modelo',        f'{seguridad:.1f}% (MAPE)'],
     ], [5*cm, W - 5*cm]))
-    story.append(Spacer(1, 0.2*cm))
+    story.append(Spacer(1, 0.3*cm))
     story.append(Paragraph(
-        f"■ Escenario Base (sin intervención): Próxima producción generará ~{pred_kg:.2f} kg desperdicio, "
-        f"{pred_pant:.0f} pantalones y {pred_co2:.1f} kg CO₂eq.", S['callout_amber']))
+        f"&#9632; Escenario Base (sin intervencion): Proxima produccion generara "
+        f"~{pred_kg:.2f} kg desperdicio, {pred_pant:.0f} pantalones y "
+        f"{pred_co2:.1f} kg CO<sub>2</sub>eq.", S['callout_amber']))
     story.append(Paragraph(
-        f"■ Oportunidad de Optimización: Revisar patrones de corte podría reducir el desperdicio "
-        f"y reducir emisiones a {pred_co2 * 0.67:.1f} kg CO₂eq (−33%).", S['callout_green']))
+        f"&#9632; Oportunidad de Optimizacion: Revisar patrones de corte podria reducir el "
+        f"desperdicio y reducir emisiones a {pred_co2 * 0.67:.1f} kg CO<sub>2</sub>eq (-33%).",
+        S['callout_green']))
 
     # PIE DE PÁGINA
     story.append(Spacer(1, 0.6*cm))

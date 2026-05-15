@@ -163,14 +163,31 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
     col7.metric("CO₂ evitado si −10% desperdicio", f"{co2_evitado_kg:.1f} kg")
     col8.metric("Intensidad CO₂ diaria", f"{co2_diario_kg:.1f} kg/día")
 
+    # KPIs operativos no técnicos
+    total_tela_consumida = df_historico['tela_consumida_m'].sum()
+    total_metros_desperdicio = df_historico['metros_desperdicio'].sum()
+    eficiencia_pct = (total_tela_consumida / (total_tela_consumida + total_metros_desperdicio)) * 100
+    pantalones_perdidos = total_metros_desperdicio / 1.20
+
+    st.subheader("📊 Indicadores Operativos")
+    col9, col10 = st.columns(2)
+    col9.metric("Eficiencia del Proceso", f"{eficiencia_pct:.1f} %", "Tela convertida en pantalones")
+    col10.metric("Pantalones No Producidos por Desperdicio", f"{pantalones_perdidos:.0f} un", "Unidades perdidas por corte")
+
     # Gráficas
     st.subheader("Visualización del Análisis de Datos")
-    
-    tab1, tab2, tab3 = st.tabs(["Serie de Tiempo Histórica", "Distribución del Peso", "Matriz de Correlación"])
-    
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Serie de Tiempo Histórica",
+        "Distribución del Peso",
+        "Matriz de Correlación",
+        "Eficiencia del Proceso",
+        "Huella de Carbono"
+    ])
+
     with tab1:
         st.line_chart(df_historico['peso_total_kg'])
-        
+
     with tab2:
         col_dist, _ = st.columns([1, 1])
         with col_dist:
@@ -214,6 +231,75 @@ if os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.ex
             ax_corr.tick_params(labelsize=9)
             plt.tight_layout()
             st.pyplot(fig_corr)
+
+    with tab4:
+        col_ef1, col_ef2 = st.columns(2)
+        with col_ef1:
+            fig_pie, ax_pie = plt.subplots(figsize=(5, 4))
+            valores_pie = [total_tela_consumida, total_metros_desperdicio]
+            etiquetas_pie = [f'Tela útil\n{total_tela_consumida:.1f} m', f'Desperdicio\n{total_metros_desperdicio:.1f} m']
+            colores_pie = ['#2ECC71', '#E74C3C']
+            wedges, texts, autotexts = ax_pie.pie(
+                valores_pie, labels=etiquetas_pie, colors=colores_pie,
+                autopct='%1.1f%%', startangle=90,
+                textprops={'fontsize': 10}, pctdistance=0.75
+            )
+            for at in autotexts:
+                at.set_fontweight('bold')
+            ax_pie.set_title("Tela Útil vs Desperdicio (metros)", fontsize=11, fontweight='bold')
+            plt.tight_layout()
+            st.pyplot(fig_pie)
+
+        with col_ef2:
+            fig_bar, ax_bar = plt.subplots(figsize=(5, 4))
+            categorias = ['Pantalones\nProducidos', 'Pantalones\nPerdidos por\nDesperdicio']
+            valores_bar = [total_pantalones, pantalones_perdidos]
+            colores_bar = ['#2ECC71', '#E74C3C']
+            bars = ax_bar.bar(categorias, valores_bar, color=colores_bar, width=0.5, edgecolor='white')
+            for bar, val in zip(bars, valores_bar):
+                ax_bar.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(valores_bar) * 0.02,
+                            f'{val:.0f} un', ha='center', va='bottom', fontsize=10, fontweight='bold')
+            ax_bar.set_ylabel("Unidades", fontsize=10)
+            ax_bar.set_title("Producción vs Pérdida por Desperdicio", fontsize=11, fontweight='bold')
+            ax_bar.tick_params(labelsize=9)
+            sns.despine(ax=ax_bar)
+            plt.tight_layout()
+            st.pyplot(fig_bar)
+
+    with tab5:
+        # CO₂ diario por día de producción
+        df_historico['co2_diario_kg'] = df_historico['pantalones_procesados'] * CO2_POR_PANTALON_KG
+
+        fig_co2, ax_co2 = plt.subplots(figsize=(10, 4))
+        ax_co2.fill_between(df_historico.index, df_historico['co2_diario_kg'], alpha=0.3, color='#E67E22')
+        ax_co2.plot(df_historico.index, df_historico['co2_diario_kg'], color='#E67E22', linewidth=1.5)
+        ax_co2.set_xlabel("Fecha", fontsize=10)
+        ax_co2.set_ylabel("CO₂ (kg)", fontsize=10)
+        ax_co2.set_title("CO₂ Diario por Día de Producción (Etapa Fabricación)", fontsize=11, fontweight='bold')
+        ax_co2.tick_params(labelsize=9)
+        sns.despine(ax=ax_co2)
+        plt.tight_layout()
+        st.pyplot(fig_co2)
+
+        # CO₂ por pantalón: fabricación vs ciclo de vida completo
+        st.markdown("#### Comparación: CO₂ Fabricación vs Ciclo de Vida Completo")
+        col_cv1, _ = st.columns([1, 1])
+        with col_cv1:
+            fig_cv, ax_cv = plt.subplots(figsize=(5, 3))
+            fases = ['Fabricación\n(este sistema)', 'Ciclo de vida\ncompleto']
+            valores_cv = [6.5, 32.7]
+            colores_cv = ['#E67E22', '#BDC3C7']
+            bars_cv = ax_cv.barh(fases, valores_cv, color=colores_cv, edgecolor='white', height=0.4)
+            for bar, val in zip(bars_cv, valores_cv):
+                ax_cv.text(val + 0.3, bar.get_y() + bar.get_height() / 2,
+                           f'{val} kg CO₂', va='center', fontsize=10, fontweight='bold')
+            ax_cv.set_xlabel("kg CO₂ por jean", fontsize=10)
+            ax_cv.set_title("Huella de Carbono por Pantalón", fontsize=11, fontweight='bold')
+            ax_cv.set_xlim(0, 38)
+            ax_cv.tick_params(labelsize=9)
+            sns.despine(ax=ax_cv)
+            plt.tight_layout()
+            st.pyplot(fig_cv)
         
     # Zona de predicción
     st.subheader("🔮 Predicción a Futuro")

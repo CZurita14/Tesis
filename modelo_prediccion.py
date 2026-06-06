@@ -4,9 +4,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, TimeSeriesSplit
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+
+# =============================================================================
+# CONSTANTES DE NEGOCIO — Variables del proceso productivo de Faditex
+# Centralizar aquí facilita ajustarlas sin buscar en el código.
+# =============================================================================
+TELA_ADQUIRIDA_M     = 9805.66   # metros de tela adquirida por mes
+TELA_POR_PANTALON_M  = 1.20      # metros de tela por pantalón (promedio 1.10–1.30)
+DESPERDICIO_PROM_M   = 45        # metros de tela desperdiciada por mes (rango: 40–50)
+DENSIDAD_TELA_G_POR_M = 225      # gramos por metro lineal de tela
+# =============================================================================
 
 def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
     print("Iniciando fase ETL (Extracción, Transformación y Carga) para Excel y CSVs...")
@@ -86,12 +96,9 @@ def realizar_eda(df):
 def integrar_logica_negocio(df):
     print("Integrando variables de negocio y preparación de Features para el modelo...")
     
-    # ---- VARIABLES DE NEGOCIO PROPORCIONADAS ----
-    TELA_ADQUIRIDA_M = 9805.66        # metros de tela adquirida por mes
-    TELA_POR_PANTALON_M = 1.20        # metros de tela por pantalón (promedio 1.10–1.30)
-    DESPERDICIO_PROM_M = 45           # metros de tela desperdiciada por mes (rango: 40–50)
-    DENSIDAD_TELA_G_POR_M = 225       # gramos por metro lineal de tela
-    # ---------------------------------------------
+    # ---- VARIABLES DE NEGOCIO (definidas a nivel de módulo, referenciadas aquí) ----
+    # TELA_ADQUIRIDA_M, TELA_POR_PANTALON_M, DESPERDICIO_PROM_M, DENSIDAD_TELA_G_POR_M
+    # ---------------------------------------------------------------------------------
 
     # Métricas de negocio derivadas de las constantes anteriores
     pantalones_por_mes = (TELA_ADQUIRIDA_M - DESPERDICIO_PROM_M) / TELA_POR_PANTALON_M
@@ -101,11 +108,43 @@ def integrar_logica_negocio(df):
     # Derivado de: metros_desperdicio = peso_g / DENSIDAD; pantalones = metros / metros_desperdicio_por_pantalon
     factor_kg_a_pantalones = 1000.0 / (DENSIDAD_TELA_G_POR_M * metros_desperdicio_por_pantalon)
 
-    # Agregación diaria: MÁXIMO del peso sobre la báscula en el día.
-    # El sensor mide el peso ACTUAL en la báscula (medición de estado, no incremental).
-    # El pico diario equivale al mayor acumulado de retazos antes de vaciar la báscula,
-    # que es el desperdicio real generado en el día. Usar sum() multiplica ese peso
-    # por la cantidad de lecturas (~14 400/día) y produce valores absurdamente inflados.
+    # ── SUPUESTO DE DISEÑO: vaciado único diario de la báscula ──────────────────
+    #
+    # El sensor HX711 registra el peso INSTANTÁNEO sobre la báscula (~1 lectura cada 5 s
+    # según delay(5000) en el firmware), no un acumulado incremental. La serie temporal de un día típico sigue un
+    # patrón "diente de sierra": el peso sube a medida que se depositan retazos
+    # y cae bruscamente a cero cuando el operario vacía la báscula.
+    #
+    # SUPUESTO: la báscula se vacía exactamente UNA vez por día, al final de la
+    # jornada. Bajo este supuesto, el MÁXIMO diario corresponde al mayor acumulado
+    # de retazos antes del vaciado y, por tanto, al desperdicio total generado en
+    # ese día. Este comportamiento fue observado directamente en el taller durante
+    # el período de recolección de datos (febrero–marzo 2026).
+    #
+    # Por qué max() y no sum():
+    #   sum() sumaría todas las lecturas del día (~17 280 si hay 1 cada 5 segundos),
+    #   convirtiendo 500 g reales en ~8 640 kg — un valor sin sentido físico.
+    #   max() extrae el único valor significativo (el pico pre-vaciado).
+    #
+    # Sensibilidad del supuesto — qué ocurriría si no se cumple:
+    #
+    #   a) La báscula se vacía VARIAS veces al día (ej. al mediodía y al cierre):
+    #      max() captura solo el pico más alto, ignorando los vaciados intermedios.
+    #      El desperdicio diario quedaría SUBESTIMADO. Para este escenario sería
+    #      necesario detectar cada ciclo "subida → reset a cero" y sumar los picos
+    #      de cada ciclo (lógica de integración por segmentos).
+    #
+    #   b) La báscula NUNCA se vacía (el peso crece varios días seguidos):
+    #      El máximo de un día incluiría el acumulado de días anteriores,
+    #      sobreestimando el desperdicio diario. Los lags y la media móvil
+    #      propagarían ese error sistemático hacia el modelo. En este caso
+    #      habría que usar la DIFERENCIA entre el máximo del día y el mínimo
+    #      de la noche anterior como estimador del desperdicio incremental.
+    #
+    # Mientras el protocolo operativo de vaciado diario se mantenga, max() es
+    # la agregación correcta y computacionalmente más robusta ante lecturas
+    # ruidosas o errores de tara.
+    # ────────────────────────────────────────────────────────────────────────────
     df_diario = df.resample('D').agg({'value': 'max'})
     df_diario = df_diario[df_diario['value'] > 0].copy()
 
@@ -134,8 +173,10 @@ def integrar_logica_negocio(df):
     df_diario['peso_lag_2'] = df_diario['peso_total_kg'].shift(2)
     df_diario['peso_lag_3'] = df_diario['peso_total_kg'].shift(3)
 
-    # Media móvil de los últimos 3 días en kg
-    df_diario['media_movil_3d'] = df_diario['peso_total_kg'].rolling(window=3).mean()
+    # Media móvil de los últimos 3 días en kg (solo días pasados, sin data leakage).
+    # shift(1) desplaza la serie un día hacia adelante antes de promediar, de modo que
+    # la ventana cubre [t-3, t-2, t-1] y nunca incluye el valor del día actual (target).
+    df_diario['media_movil_3d'] = df_diario['peso_total_kg'].shift(1).rolling(window=3).mean()
 
     # Invalidar lags contaminados por brechas temporales > 2 días entre registros.
     # Sin esto, el lag del día siguiente a una brecha de 21 días apuntaría a datos
@@ -180,10 +221,31 @@ def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
     r2_train = rf_model.score(X_train, y_train)
     gap = r2_train - r2
 
-    # Seguridad = precisión basada en MAPE (error porcentual absoluto medio)
-    # MAPE mide el error relativo promedio; (1 - MAPE) * 100 da la exactitud porcentual
-    mape = np.mean(np.abs((y_test - y_pred) / y_test))
-    seguridad_pct = max(0.0, (1 - mape) * 100)
+    # --- MÉTRICA DE SEGURIDAD (MAPE → "precisión") ---
+    # Qué mide: el MAPE (Mean Absolute Percentage Error) expresa el error medio
+    # de predicción como porcentaje del valor real. Se convierte en "seguridad"
+    # como (1 - MAPE) * 100, interpretable como "el modelo acierta en promedio
+    # este % del valor real" en el conjunto de prueba.
+    #
+    # Limitación importante: MAPE es inestable cuando y_test contiene valores
+    # cercanos o iguales a cero (división por cero → inf o nan que inflan el
+    # promedio). Para este dominio (peso en kg > 0) el riesgo es bajo, pero se
+    # filtra igualmente por robustez. Además, MAPE penaliza más los errores en
+    # valores pequeños que en valores grandes, por lo que puede dar una impresión
+    # optimista cuando los pesos de prueba son altos.
+    #
+    # Nota: esta métrica se expone en el dashboard; no cambiar el nombre de la
+    # variable ni el tipo de retorno para no romper dashboard_tesis.py.
+    mascara_valida = np.abs(y_test) > 1e-6          # excluye ceros o casi-ceros
+    if mascara_valida.sum() == 0:
+        # Sin observaciones válidas: no se puede calcular MAPE
+        mape = np.nan
+        seguridad_pct = 0.0
+    else:
+        mape = np.mean(np.abs(
+            (y_test[mascara_valida] - y_pred[mascara_valida]) / y_test[mascara_valida]
+        ))
+        seguridad_pct = max(0.0, (1 - mape) * 100)
     
     print("\n--- RESULTADOS DEL MODELO RANDOM FOREST ---")
     print(f"RMSE (Raíz del Error Cuadrático Medio): {rmse:.2f} kg")
@@ -214,7 +276,68 @@ def entrenar_modelo_random_forest(df_procesado, n_arboles=100):
     df_importancia = df_importancia.sort_values(by='Importancia', ascending=False)
     print("\nImportancia de las variables:")
     print(df_importancia.to_string(index=False))
-    
+
+    # ------------------------------------------------------------------
+    # VALIDACIÓN CRUZADA TEMPORAL (solo para reporte — no altera el modelo)
+    # ------------------------------------------------------------------
+    # TimeSeriesSplit divide el dataset en n_splits folds respetando el orden
+    # cronológico: cada fold entrena sobre todo lo anterior y prueba sobre la
+    # siguiente ventana. Esto simula cómo el modelo se comportaría en producción
+    # día a día y produce estimaciones de error más conservadoras (y honestas)
+    # que un split aleatorio.
+    #
+    # Parámetros elegidos:
+    #   n_splits=5  → con ~39 días, cada fold de prueba tiene ~5-6 días,
+    #                 suficiente para calcular métricas sin vaciar el set de train.
+    #   gap=0       → no se omiten días entre train y test (datos diarios,
+    #                 no hay riesgo de filtrado por granularidad horaria).
+    # Se usan los mismos hiperparámetros del modelo principal para coherencia.
+    print("\n--- VALIDACIÓN CRUZADA TEMPORAL (TimeSeriesSplit, 5 folds) ---")
+    tscv = TimeSeriesSplit(n_splits=5)
+    cv_rmse, cv_mae, cv_r2 = [], [], []
+
+    for fold_idx, (train_idx, test_idx) in enumerate(tscv.split(X), start=1):
+        # Requiere al menos 2 muestras en train y 1 en test para ser significativo
+        if len(train_idx) < 2 or len(test_idx) < 1:
+            print(f"  Fold {fold_idx}: omitido (datos insuficientes)")
+            continue
+
+        X_cv_train, X_cv_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_cv_train, y_cv_test = y.iloc[train_idx], y.iloc[test_idx]
+
+        rf_cv = RandomForestRegressor(
+            n_estimators=n_arboles, max_depth=5, min_samples_leaf=2, random_state=42
+        )
+        rf_cv.fit(X_cv_train, y_cv_train)
+        y_cv_pred = rf_cv.predict(X_cv_test)
+
+        fold_rmse = np.sqrt(mean_squared_error(y_cv_test, y_cv_pred))
+        fold_mae  = mean_absolute_error(y_cv_test, y_cv_pred)
+        # R² puede ser negativo si el modelo es peor que la media — es válido y esperado
+        # en folds pequeños; se reporta sin clampear para no ocultar mal desempeño.
+        fold_r2   = r2_score(y_cv_test, y_cv_pred)
+
+        cv_rmse.append(fold_rmse)
+        cv_mae.append(fold_mae)
+        cv_r2.append(fold_r2)
+        print(f"  Fold {fold_idx} "
+              f"(train={len(train_idx)} días, test={len(test_idx)} días): "
+              f"RMSE={fold_rmse:.4f} kg  MAE={fold_mae:.4f} kg  R²={fold_r2:.4f}")
+
+    if cv_rmse:  # al menos un fold válido
+        print(f"  --- Promedio CV ---")
+        print(f"  RMSE promedio : {np.mean(cv_rmse):.4f} kg  "
+              f"(±{np.std(cv_rmse):.4f})")
+        print(f"  MAE  promedio : {np.mean(cv_mae):.4f} kg  "
+              f"(±{np.std(cv_mae):.4f})")
+        print(f"  R²   promedio : {np.mean(cv_r2):.4f}  "
+              f"(±{np.std(cv_r2):.4f})")
+    else:
+        print("  No se pudo completar ningún fold (dataset demasiado pequeño).")
+    print("-------------------------------------------------------------\n")
+    # Fin del bloque de CV — el modelo final y las métricas del split 80/20
+    # (rmse, mae, r2, seguridad_pct) no han sido modificados.
+
     return rf_model, rmse, mae, r2, seguridad_pct
 
 if __name__ == "__main__":

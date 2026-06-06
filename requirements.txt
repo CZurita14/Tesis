@@ -1,10 +1,13 @@
-streamlit
-pandas
-numpy
-matplotlib
-seaborn
-scikit-learn
-adafruit-io
-python-dotenv
-openpyxl
-reportlab
+# Dependencias fijadas para reproducibilidad de la tesis.
+# Versiones exactas instaladas en el entorno .venv (generado con pip freeze, 2026-06-06).
+# Para recrear el entorno: pip install -r requirements.txt
+streamlit==1.58.0
+pandas==3.0.3
+numpy==2.4.6
+matplotlib==3.10.9
+seaborn==0.13.2
+scikit-learn==1.9.0
+adafruit-io==3.0.0
+python-dotenv==1.2.2
+openpyxl==3.1.5
+reportlab==4.5.1

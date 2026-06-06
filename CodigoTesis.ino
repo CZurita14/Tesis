@@ -4,14 +4,14 @@
 #include "Adafruit_MQTT_Client.h"
 
 /************************* Config WiFi *************************/
-#define WIFI_SSID       "NETLIFE-MEDINA"        //  Cambia por tu WiFi
-#define WIFI_PASS       "Ferquinga1984$"    //  Cambia por tu clave WiFi
+#define WIFI_SSID       "TU_SSID"               //  Cambia por tu WiFi
+#define WIFI_PASS       "TU_PASSWORD_WIFI"       //  Cambia por tu clave WiFi
 
 /************************* Config Adafruit IO *************************/
-#define AIO_SERVER      "io.adafruit.com"  d  |   
+#define AIO_SERVER      "io.adafruit.com"
 #define AIO_SERVERPORT  1883           // usa 8883 si quieres TLS/SSL
-#define IO_USERNAME  "SPeso03"
-#define IO_KEY       "TU_CLAVE_DE_ADAFRUIT"
+#define AIO_USERNAME "SPeso03"
+#define AIO_KEY      "TU_CLAVE_DE_ADAFRUIT"
 
 // Cliente WiFi
 WiFiClient client;
@@ -32,8 +32,8 @@ Adafruit_MQTT_Publish feedSensores = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "
 #define SCK3 21
 #define DT4 22            
 #define SCK4 23
-#define DT5 35            
-#define SCK5 36
+#define DT5 25            
+#define SCK5 26
 
 // Factores de escala (debes calibrar cada uno)
 #define SCALE_FACTOR_1 353.f
@@ -90,18 +90,69 @@ void setup() {
 }
 
 void loop() {
-  // Mantener conexión MQTT
+  // 1) Verificar WiFi antes de cualquier operación de red.
+  //    Si la conexión se cayó, reconectar antes de intentar MQTT.
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi desconectado. Reconectando...");
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    unsigned long t0 = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
+      delay(500);
+      Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nWiFi reconectado.");
+    } else {
+      Serial.println("\nNo se pudo reconectar al WiFi. Reintentando en el siguiente ciclo.");
+      delay(5000);
+      return;  // saltar el resto del loop y reintentar
+    }
+  }
+
+  // 2) Mantener conexión MQTT
   if (!mqtt.ping(3)) {
     if (!mqtt.connected())
       connectMQTT();
   }
 
-  // Leer celdas
-  float peso1 = celda1.get_units(5);
-  float peso2 = celda2.get_units(5);
-  float peso3 = celda3.get_units(5);
-  float peso4 = celda4.get_units(5);
-  float peso5 = celda5.get_units(5);
+  // 3) Leer celdas con verificación is_ready() para evitar bloqueos
+  //    si un sensor se desconecta o pierde comunicación con el ESP32.
+  //    is_ready() comprueba que el pin DT esté en LOW (dato disponible)
+  //    sin esperar indefinidamente; si no está listo se usa 0.0 como fallback.
+  float peso1 = 0.0;
+  if (celda1.is_ready()) {
+    peso1 = celda1.get_units(5);
+  } else {
+    Serial.println("Advertencia: Celda 1 no lista (sensor desconectado?)");
+  }
+
+  float peso2 = 0.0;
+  if (celda2.is_ready()) {
+    peso2 = celda2.get_units(5);
+  } else {
+    Serial.println("Advertencia: Celda 2 no lista (sensor desconectado?)");
+  }
+
+  float peso3 = 0.0;
+  if (celda3.is_ready()) {
+    peso3 = celda3.get_units(5);
+  } else {
+    Serial.println("Advertencia: Celda 3 no lista (sensor desconectado?)");
+  }
+
+  float peso4 = 0.0;
+  if (celda4.is_ready()) {
+    peso4 = celda4.get_units(5);
+  } else {
+    Serial.println("Advertencia: Celda 4 no lista (sensor desconectado?)");
+  }
+
+  float peso5 = 0.0;
+  if (celda5.is_ready()) {
+    peso5 = celda5.get_units(5);
+  } else {
+    Serial.println("Advertencia: Celda 5 no lista (sensor desconectado?)");
+  }
 
   float pesoTotal = peso1 + peso2 + peso3 + peso4 + peso5;
 

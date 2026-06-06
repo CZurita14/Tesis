@@ -70,12 +70,12 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
     fecha_fin    = df_hist.index.max().strftime('%B %d, %Y')
     hoy          = datetime.now().strftime('%d de %B de %Y')
     dias         = len(df_hist)
-    co2_km       = co2_total * 4.0
-    co2_arboles  = round(co2_total / 14)
+    co2_km       = co2_total * CO2_KM_EQUIV
+    co2_arboles  = round(co2_total / CO2_ARBOL_KG_ANUAL)
     co2_anual    = co2_total * (365 / dias)
     tasa_desperd = (metros_desperd / (total_tela + metros_desperd)) * 100
-    benchmark_pant = round((metros_desperd - (total_tela + metros_desperd) * 0.025) / 1.20)
-    ingreso_opt  = benchmark_pant * 10
+    benchmark_pant = round((metros_desperd - (total_tela + metros_desperd) * BENCHMARK_DESPERDICIO) / TELA_POR_PANTALON_M)
+    ingreso_opt  = benchmark_pant * PRECIO_PANTALON_USD
 
     def tabla(data, col_widths, header_bg=C_TEAL):
         t = Table(data, colWidths=col_widths)
@@ -127,7 +127,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
         ['Campo', 'Valor'],
         ['Rango de Medición', f'{fecha_inicio} hasta {fecha_fin}'],
         ['Días con Sensor Activo', f'{dias} días'],
-        ['Frecuencia de Lectura', 'Cada ~6 segundos mediante ESP32 + HX711'],
+        ['Frecuencia de Lectura', 'Cada 5 segundos mediante ESP32 + HX711'],
         ['Disponibilidad del Sistema', f'{dias}/{dias} días analizados (100% datos válidos)'],
     ], [5*cm, W - 5*cm]))
 
@@ -163,7 +163,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
     story.append(Spacer(1, 0.2*cm))
     story.append(Paragraph(
         f"■ El desperdicio de {total_desperd:.2f} kg equivale a {pant_perdidos:.0f} pantalones que dejaron de fabricarse. "
-        f"Optimizar a 2.5% (benchmark del sector) permitiría producir {abs(benchmark_pant):.0f} pantalones "
+        f"Optimizar a {BENCHMARK_DESPERDICIO*100:.1f}% (benchmark del sector) permiriría producir {abs(benchmark_pant):.0f} pantalones "
         f"adicionales por ciclo (ingresos +${abs(ingreso_opt):.0f} USD).", S['callout_red']))
 
     # SECCIÓN 4
@@ -203,7 +203,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
         f"{pred_co2:.1f} kg CO<sub>2</sub>eq.", S['callout_amber']))
     story.append(Paragraph(
         f"&#9632; Oportunidad de Optimizacion: Revisar patrones de corte podria reducir el "
-        f"desperdicio y reducir emisiones a {pred_co2 * 0.67:.1f} kg CO<sub>2</sub>eq (-33%).",
+        f"desperdicio y reducir emisiones a {pred_co2 * FACTOR_OPTIMIZACION_CO2:.1f} kg CO<sub>2</sub>eq (-{round((1-FACTOR_OPTIMIZACION_CO2)*100):.0f}%).",
         S['callout_green']))
 
     # PIE DE PÁGINA
@@ -307,7 +307,10 @@ archivo_excel = 'Datos-sensores-entrenamiento.xlsx'
 archivo_csv1  = 'SensorPESO1-20260310-2114.csv'
 archivo_csv3  = 'SensorPESO3-20260310-2122.csv'
 
-@st.cache_data
+@st.cache_resource          # cache_resource: correcto para objetos no serializables como modelos sklearn.
+                            # cache_data serializa por pickle en cada miss; cache_resource guarda
+                            # una referencia en memoria compartida por toda la sesión, evitando
+                            # overhead de serialización y posibles errores con objetos stateful.
 def cargar_modelo(n_arboles):
     df_limpio = cargar_y_limpiar_datos(archivo_excel, archivo_csv1, archivo_csv3)
     df_final, factor_kg_pantalones = integrar_logica_negocio(df_limpio)
@@ -316,6 +319,21 @@ def cargar_modelo(n_arboles):
 
 @st.cache_data
 def obtener_llave_feed(username_cache):
+    """Detecta la clave (key) del feed de peso en Adafruit IO.
+
+    Parámetro ``username_cache``:
+        No se usa dentro del cuerpo de la función. Su propósito es actuar como
+        **discriminador de caché** para ``@st.cache_data``: Streamlit genera una
+        entrada de caché distinta por cada valor único de los argumentos, así que
+        pasar el username garantiza que si el usuario cambia sus credenciales en
+        tiempo de ejecución, el caché se invalida y se re-consulta la API con el
+        cliente ``aio`` actualizado. Sin este argumento, el primer resultado
+        quedaría congelado indefinidamente para cualquier usuario.
+
+        El cliente ``aio`` se usa directamente porque es un objeto global de
+        sesión (no serializable), por lo que no puede pasarse como argumento a
+        una función decorada con ``@st.cache_data``.
+    """
     try:
         feeds_disponibles = aio.feeds()
         nombres_feeds = [f.key for f in feeds_disponibles]
@@ -326,7 +344,20 @@ def obtener_llave_feed(username_cache):
     except Exception:
         return 'peso'
 
-CO2_POR_PANTALON_KG = 6.5
+# =============================================================================
+# CONSTANTES DE NEGOCIO — Parámetros del proceso productivo de Faditex
+# Ajusta aquí para que el cambio se propague a todo el dashboard y el PDF.
+# =============================================================================
+CO2_POR_PANTALON_KG    = 6.5    # kg CO₂eq por jean (etapa fabricación, factor LCA)
+CO2_CICLO_VIDA_KG      = 32.7   # kg CO₂eq ciclo de vida completo del jean
+TELA_POR_PANTALON_M    = 1.20   # metros de tela por pantalón (promedio 1.10–1.30)
+BENCHMARK_DESPERDICIO  = 0.025  # tasa de desperdicio benchmark del sector (2.5%)
+PRECIO_PANTALON_USD    = 10     # precio unitario estimado del pantalón (USD)
+FRACCION_CO2_EVITADO   = 0.10   # fracción de CO₂ evitado si se reduce 10% el desperdicio
+FACTOR_OPTIMIZACION_CO2 = 0.67  # factor de reducción de CO₂ con optimización de corte (−33%)
+CO2_KM_EQUIV           = 4.0    # km recorridos en auto equivalentes a 1 kg CO₂ (0.25 kg/km)
+CO2_ARBOL_KG_ANUAL     = 14     # kg CO₂ absorbidos por un árbol en crecimiento por año
+# =============================================================================
 
 if not (os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.path.exists(archivo_csv3)):
     st.error(f"Faltan archivos de datos. Verifica que {archivo_excel}, {archivo_csv1} y {archivo_csv3} estén en la carpeta.")
@@ -335,22 +366,52 @@ if not (os.path.exists(archivo_excel) and os.path.exists(archivo_csv1) and os.pa
 with st.spinner("Cargando datos y entrenando modelo..."):
     df_historico, modelo_rf, rmse, mae, r2, seguridad_pct, factor_kg_pantalones = cargar_modelo(n_arboles_select)
 
+# ── Guardas contra datos vacíos ──────────────────────────────────────────────
+# Se verifican ANTES de cualquier cálculo para evitar ZeroDivisionError /
+# IndexError cuando el pipeline no produce filas (datos insuficientes o
+# archivos corruptos). Los cálculos normales no se ven afectados.
+
+if len(df_historico) == 0:
+    st.error(
+        "⚠️ El pipeline no generó datos diarios. "
+        "Verifica que los archivos de entrada tengan lecturas válidas (50 g – 2 000 g) "
+        "y al menos 4 días con datos para construir los lags."
+    )
+    st.stop()
+
+_denom_efic = df_historico['tela_consumida_m'].sum() + df_historico['metros_desperdicio'].sum()
+if _denom_efic == 0:
+    st.error(
+        "⚠️ La tela consumida y el desperdicio suman cero: "
+        "no es posible calcular la eficiencia del proceso. "
+        "Revisa las constantes de conversión (DENSIDAD_TELA_G_POR_M, TELA_POR_PANTALON_M)."
+    )
+    st.stop()
+
+if df_historico.iloc[-1:].empty:
+    st.error(
+        "⚠️ No se pudo obtener el último registro diario para realizar la predicción. "
+        "El DataFrame existe pero su último índice no es accesible."
+    )
+    st.stop()
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Métricas pre-calculadas
 total_pantalones         = df_historico['pantalones_procesados'].sum()
 co2_total_kg             = total_pantalones * CO2_POR_PANTALON_KG
-co2_evitado_kg           = co2_total_kg * 0.10
+co2_evitado_kg           = co2_total_kg * FRACCION_CO2_EVITADO
 co2_diario_kg_promedio   = co2_total_kg / len(df_historico)
 total_tela_consumida     = df_historico['tela_consumida_m'].sum()
 total_metros_desperdicio = df_historico['metros_desperdicio'].sum()
 eficiencia_pct           = (total_tela_consumida / (total_tela_consumida + total_metros_desperdicio)) * 100
-pantalones_perdidos      = total_metros_desperdicio / 1.20
+pantalones_perdidos      = total_metros_desperdicio / TELA_POR_PANTALON_M
 df_historico['co2_diario_kg'] = df_historico['pantalones_procesados'] * CO2_POR_PANTALON_KG
 
 features_modelo      = ['dia_semana', 'dia_mes', 'mes', 'peso_lag_1', 'peso_lag_2', 'peso_lag_3', 'media_movil_3d']
 ultimo_dia           = df_historico.iloc[-1:]
 prediccion_futura_kg = modelo_rf.predict(ultimo_dia[features_modelo])
 pantalones_futuros   = prediccion_futura_kg[0] * factor_kg_pantalones
-tela_futura          = pantalones_futuros * 1.20
+tela_futura          = pantalones_futuros * TELA_POR_PANTALON_M
 co2_prediccion       = pantalones_futuros * CO2_POR_PANTALON_KG
 
 # ==========================================
@@ -388,7 +449,10 @@ if pagina == "📊 Dashboard Principal":
                     ultimo = datos[0]
                     peso_actual = float(ultimo.value)
                     st.metric("Peso actual (g)", f"{peso_actual:.1f} g")
-                    st.metric("Equiv. pantalones", f"{peso_actual / 500:.2f} un")
+                    # Conversión g → pantalones usando el mismo factor derivado del pipeline
+                    # (factor_kg_pantalones = kg desperdicio → pantalones estimados).
+                    # Antes: peso_actual / 500 (aprox. hardcodeada, inconsistente con el modelo).
+                    st.metric("Equiv. pantalones", f"{(peso_actual / 1000) * factor_kg_pantalones:.2f} un")
                     st.caption("🔄 Actualización cada 4s")
                 except RequestError as e:
                     st.warning(f"Error feed: {e}")
@@ -597,7 +661,7 @@ elif pagina == "🌱 Huella de Carbono":
         st.markdown("#### CO₂ Fabricación vs Ciclo Completo")
         fig_cv, ax_cv = _base_fig((4, 3.5))
         fases      = ['Fabricación\n(este sistema)', 'Ciclo de vida\ncompleto']
-        valores_cv = [6.5, 32.7]
+        valores_cv = [CO2_POR_PANTALON_KG, CO2_CICLO_VIDA_KG]
         bars_cv    = ax_cv.barh(fases, valores_cv,
                                 color=[C_ORG, C_GRAY], edgecolor=BG, height=0.4, linewidth=1.5)
         for bar, val in zip(bars_cv, valores_cv):

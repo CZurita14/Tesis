@@ -4,8 +4,8 @@
 #include "Adafruit_MQTT_Client.h"
 
 /************************* Config WiFi *************************/
-#define WIFI_SSID       "NETLIFE-MEDINA"        // Cambia por tu WiFi
-#define WIFI_PASS       "Ferquinga1984$"        // Cambia por tu clave WiFi
+#define WIFI_SSID       "TU_SSID"               // Cambia por tu WiFi
+#define WIFI_PASS       "TU_PASSWORD_WIFI"       // Cambia por tu clave WiFi
 
 /************************* Config Adafruit IO *************************/
 #define AIO_SERVER      "io.adafruit.com"
@@ -68,15 +68,48 @@ void setup() {
 }
 
 void loop() {
-  // Mantener conexión MQTT
+  // 1) Verificar WiFi antes de cualquier operación de red.
+  //    Si la conexión se cayó, reconectar antes de intentar MQTT.
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi desconectado. Reconectando...");
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    unsigned long t0 = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
+      delay(500);
+      Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nWiFi reconectado.");
+    } else {
+      Serial.println("\nNo se pudo reconectar al WiFi. Reintentando en el siguiente ciclo.");
+      delay(5000);
+      return;  // saltar el resto del loop y reintentar
+    }
+  }
+
+  // 2) Mantener conexión MQTT
   if (!mqtt.ping(3)) {
     if (!mqtt.connected())
       connectMQTT();
   }
 
-  // Leer ambas celdas
-  float peso1 = celda1.get_units(5);
-  float peso2 = celda2.get_units(5);
+  // 3) Leer ambas celdas con verificación is_ready() para evitar bloqueos
+  //    si un sensor se desconecta o pierde comunicación con el ESP32.
+  //    is_ready() comprueba que el pin DT esté en LOW (dato disponible)
+  //    sin esperar indefinidamente; si no está listo se usa 0.0 como fallback.
+  float peso1 = 0.0;
+  if (celda1.is_ready()) {
+    peso1 = celda1.get_units(5);
+  } else {
+    Serial.println("Advertencia: Celda 1 no lista (sensor desconectado?)");
+  }
+
+  float peso2 = 0.0;
+  if (celda2.is_ready()) {
+    peso2 = celda2.get_units(5);
+  } else {
+    Serial.println("Advertencia: Celda 2 no lista (sensor desconectado?)");
+  }
 
   // Calcular el peso total
   float pesoTotal = peso1 + peso2;

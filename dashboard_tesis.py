@@ -531,7 +531,7 @@ elif pagina == "📈 Análisis de Datos":
     tab1, tab2, tab3 = st.tabs(["Serie de Tiempo", "Distribución del Peso", "Matriz de Correlación"])
 
     with tab1:
-        fig_st, ax_st = _base_fig((10, 3.5))
+        fig_st, ax_st = _base_fig((11, 4))
         ax_st.fill_between(df_historico.index, df_historico['peso_total_kg'], alpha=0.15, color=C_BLUE)
         ax_st.plot(df_historico.index, df_historico['peso_total_kg'], color=C_BLUE, linewidth=1.8)
         ax_st.set_ylabel("Peso (kg)", fontsize=10)
@@ -543,50 +543,56 @@ elif pagina == "📈 Análisis de Datos":
         plt.close(fig_st)
 
     with tab2:
-        col_d, _ = st.columns([1, 1])
-        with col_d:
-            fig_h, ax_h = _base_fig((5, 3.5))
-            sns.histplot(df_historico['peso_total_kg'], bins=20, kde=True,
-                         color=C_PUR, alpha=0.7, ax=ax_h,
-                         line_kws={'color': '#D4A0FF', 'linewidth': 2})
-            ax_h.set_xlabel("Peso Total (kg)", fontsize=10)
-            ax_h.set_ylabel("Frecuencia", fontsize=10)
-            ax_h.set_title("Distribución del Peso Diario", fontsize=11, fontweight='bold')
-            _style(ax_h)
-            plt.tight_layout()
-            st.pyplot(fig_h)
-            plt.close(fig_h)
+        fig_h, ax_h = _base_fig((11, 4))
+        sns.histplot(df_historico['peso_total_kg'], bins=20, kde=True,
+                     color=C_PUR, alpha=0.7, ax=ax_h,
+                     line_kws={'color': '#D4A0FF', 'linewidth': 2})
+        ax_h.set_xlabel("Peso Total (kg)", fontsize=10)
+        ax_h.set_ylabel("Frecuencia", fontsize=10)
+        ax_h.set_title("Distribución del Peso Diario", fontsize=11, fontweight='bold')
+        _style(ax_h)
+        plt.tight_layout()
+        st.pyplot(fig_h)
+        plt.close(fig_h)
 
     with tab3:
-        col_c, _ = st.columns([1, 1])
-        with col_c:
-            etiquetas = {
-                'peso_total_kg':          'Peso\n(kg)',
-                'pantalones_procesados':  'Pantalones\n(un)',
-                'tela_consumida_m':       'Tela\n(m)',
-                'desperdicio_estimado_g': 'Desperdicio\n(g)'
-            }
-            matriz_corr = df_historico[list(etiquetas.keys())].corr()
-            matriz_corr.columns = list(etiquetas.values())
-            matriz_corr.index   = list(etiquetas.values())
+        st.caption("Correlación entre las variables que usa el modelo: el peso del día, "
+                   "sus rezagos (días previos), la media móvil de 3 días y las variables "
+                   "temporales. A diferencia de las variables de negocio (que derivan del "
+                   "mismo dato y correlacionan 1.00 trivialmente), aquí se observan relaciones reales.")
+        # Variables reales del modelo (no transformaciones lineales del mismo dato)
+        etiquetas = {
+            'peso_total_kg':  'Peso\n(kg)',
+            'peso_lag_1':     'Lag 1d',
+            'peso_lag_2':     'Lag 2d',
+            'peso_lag_3':     'Lag 3d',
+            'media_movil_3d': 'Media\nmóvil 3d',
+            'dia_semana':     'Día\nsemana',
+            'dia_mes':        'Día\nmes',
+            'mes':            'Mes',
+        }
+        cols_corr = [c for c in etiquetas if c in df_historico.columns]
+        matriz_corr = df_historico[cols_corr].corr()
+        matriz_corr.columns = [etiquetas[c] for c in cols_corr]
+        matriz_corr.index   = [etiquetas[c] for c in cols_corr]
 
-            fig_corr, ax_corr = plt.subplots(figsize=(5, 4))
-            fig_corr.patch.set_facecolor(BG)
-            ax_corr.set_facecolor(AX_BG)
-            sns.heatmap(matriz_corr, annot=True, fmt=".2f", cmap='RdYlGn',
-                        vmin=-1, vmax=1, linewidths=1, linecolor=BG,
-                        square=True, annot_kws={'size': 11, 'weight': 'bold'},
-                        ax=ax_corr, cbar_kws={'shrink': 0.8})
-            ax_corr.set_title("Correlación entre Variables", fontsize=11, fontweight='bold', pad=10, color=FG)
-            ax_corr.tick_params(colors=FG, labelsize=9)
-            # colorbar text
-            cbar = ax_corr.collections[0].colorbar
-            cbar.ax.yaxis.set_tick_params(color=FG, labelsize=8)
-            plt.setp(cbar.ax.yaxis.get_ticklabels(), color=FG)
-            cbar.ax.set_facecolor(AX_BG)
-            plt.tight_layout()
-            st.pyplot(fig_corr)
-            plt.close(fig_corr)
+        fig_corr, ax_corr = plt.subplots(figsize=(10, 5))
+        fig_corr.patch.set_facecolor(BG)
+        ax_corr.set_facecolor(AX_BG)
+        sns.heatmap(matriz_corr, annot=True, fmt=".2f", cmap='RdYlGn',
+                    vmin=-1, vmax=1, linewidths=1, linecolor=BG,
+                    square=True, annot_kws={'size': 9, 'weight': 'bold'},
+                    ax=ax_corr, cbar_kws={'shrink': 0.8})
+        ax_corr.set_title("Correlación entre Variables del Modelo", fontsize=11, fontweight='bold', pad=10, color=FG)
+        ax_corr.tick_params(colors=FG, labelsize=8)
+        # colorbar text
+        cbar = ax_corr.collections[0].colorbar
+        cbar.ax.yaxis.set_tick_params(color=FG, labelsize=8)
+        plt.setp(cbar.ax.yaxis.get_ticklabels(), color=FG)
+        cbar.ax.set_facecolor(AX_BG)
+        plt.tight_layout()
+        st.pyplot(fig_corr)
+        plt.close(fig_corr)
 
 # ==========================================
 # PÁGINA: HUELLA DE CARBONO

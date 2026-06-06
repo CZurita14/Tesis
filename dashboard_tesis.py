@@ -609,16 +609,46 @@ elif pagina == "🌱 Huella de Carbono":
     col4.metric("Intensidad CO₂ diaria",             f"{co2_diario_kg_promedio:.1f} kg/día")
 
     st.markdown("#### CO₂ Diario por Día de Producción")
-    fig_co2, ax_co2 = _base_fig((10, 3.5))
-    ax_co2.fill_between(df_historico.index, df_historico['co2_diario_kg'], alpha=0.2, color=C_ORG)
-    ax_co2.plot(df_historico.index, df_historico['co2_diario_kg'], color=C_ORG, linewidth=1.8)
-    ax_co2.set_xlabel("Fecha", fontsize=10)
-    ax_co2.set_ylabel("CO₂ (kg)", fontsize=10)
-    ax_co2.set_title("CO₂ Generado por Día de Producción", fontsize=11, fontweight='bold')
-    _style(ax_co2)
-    plt.tight_layout()
-    st.pyplot(fig_co2)
-    plt.close(fig_co2)
+
+    # Selector de rango de fechas: la gráfica se recalcula según el día/semana elegido
+    fecha_min = df_historico.index.min().date()
+    fecha_max = df_historico.index.max().date()
+    col_sel, col_kpi = st.columns([2, 1])
+    with col_sel:
+        rango = st.date_input(
+            "Rango de fechas a visualizar:",
+            value=(fecha_min, fecha_max),
+            min_value=fecha_min, max_value=fecha_max,
+        )
+
+    # date_input puede devolver una sola fecha mientras se está seleccionando el rango
+    if isinstance(rango, (tuple, list)):
+        fecha_ini = rango[0]
+        fecha_fin = rango[1] if len(rango) > 1 else rango[0]
+    else:
+        fecha_ini = fecha_fin = rango
+
+    df_co2 = df_historico[(df_historico.index.date >= fecha_ini) &
+                          (df_historico.index.date <= fecha_fin)]
+
+    with col_kpi:
+        st.metric("CO₂ del rango seleccionado",
+                  f"{df_co2['co2_diario_kg'].sum():.1f} kg",
+                  delta=f"{len(df_co2)} día(s)")
+
+    if df_co2.empty:
+        st.warning("No hay datos en el rango seleccionado.")
+    else:
+        fig_co2, ax_co2 = _base_fig((10, 3.5))
+        ax_co2.fill_between(df_co2.index, df_co2['co2_diario_kg'], alpha=0.2, color=C_ORG)
+        ax_co2.plot(df_co2.index, df_co2['co2_diario_kg'], color=C_ORG, linewidth=1.8, marker='o', markersize=4)
+        ax_co2.set_xlabel("Fecha", fontsize=10)
+        ax_co2.set_ylabel("CO₂ (kg)", fontsize=10)
+        ax_co2.set_title("CO₂ Generado por Día de Producción", fontsize=11, fontweight='bold')
+        _style(ax_co2)
+        plt.tight_layout()
+        st.pyplot(fig_co2)
+        plt.close(fig_co2)
 
     col_a, col_b, col_c = st.columns(3)
 

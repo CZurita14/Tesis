@@ -34,10 +34,17 @@ def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
         except Exception:
             pass
 
-    # Cargar datos desde CSVs
-    df_csv1 = pd.read_csv(filepath_csv1)[['created_at', 'value']].copy()
-    df_csv3 = pd.read_csv(filepath_csv3)[['created_at', 'value']].copy()
-    dataframes.extend([df_csv1, df_csv3])
+    # Cargar todos los CSVs de sensores (*PESO*.csv) del directorio automáticamente.
+    # Igual que con los Excel: al agregar un nuevo export de Adafruit IO con 'PESO'
+    # en el nombre, se incluye sin tocar código y el modelo reentrena con más datos.
+    archivos_csv = sorted(glob.glob(os.path.join(directorio, '*PESO*.csv')))
+    for archivo in archivos_csv:
+        try:
+            df_tmp = pd.read_csv(archivo)[['created_at', 'value']].copy()
+            dataframes.append(df_tmp)
+            print(f"  Cargado: {os.path.basename(archivo)} ({len(df_tmp)} filas)")
+        except Exception:
+            pass
 
     # Unir todos los datos
     df = pd.concat(dataframes, ignore_index=True)

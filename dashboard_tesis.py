@@ -603,7 +603,10 @@ elif pagina == "🌱 Huella de Carbono":
     st.divider()
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("CO₂ Total del Período",            f"{co2_total_kg:.1f} kg")
+    col1.metric(f"CO₂ Total ({len(df_historico)} días)", f"{co2_total_kg:.1f} kg",
+                help=f"Suma de todos los días analizados: "
+                     f"{df_historico.index.min().strftime('%d/%m/%Y')} a "
+                     f"{df_historico.index.max().strftime('%d/%m/%Y')}")
     col2.metric("CO₂ por Jean (fabricación)",       "6.5 kg", "~20% ciclo de vida")
     col3.metric("CO₂ evitado si −10% desperdicio",  f"{co2_evitado_kg:.1f} kg")
     col4.metric("Intensidad CO₂ diaria",             f"{co2_diario_kg_promedio:.1f} kg/día")

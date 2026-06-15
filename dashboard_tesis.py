@@ -21,9 +21,225 @@ except ImportError:
 
 st.set_page_config(page_title="Dashboard Predictivo de Producción", page_icon="👖", layout="wide")
 
-# ==========================================
+# ══════════════════════════════════════════════════════════════════════════════
+# CSS GLOBAL — PREMIUM LIGHT THEME
+# Inyección directa para garantizar consistencia visual en todos los widgets.
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ── App background ── */
+.stApp {
+    background-color: #F4F7FE !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background-color: #FFFFFF !important;
+    border-right: 1.5px solid #E9EDF7 !important;
+    box-shadow: 4px 0 24px rgba(112,144,176,.10) !important;
+}
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] div { color: #1B2559 !important; }
+
+/* ── Headings ── */
+h1,h2,h3,h4 {
+    color: #1B2559 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+    letter-spacing: -.5px !important;
+}
+
+/* ── Metric cards ── */
+[data-testid="stMetric"] {
+    background: #FFFFFF !important;
+    border-radius: 16px !important;
+    padding: 1.1rem 1.3rem !important;
+    box-shadow: 0 2px 16px rgba(112,144,176,.14) !important;
+    border: 1px solid #E9EDF7 !important;
+    transition: transform .2s ease, box-shadow .2s ease !important;
+}
+[data-testid="stMetric"]:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 28px rgba(112,144,176,.22) !important;
+}
+[data-testid="stMetricValue"] {
+    color: #1B2559 !important;
+    font-weight: 800 !important;
+    font-size: 1.5rem !important;
+    font-family: 'Inter', sans-serif !important;
+}
+[data-testid="stMetricLabel"] {
+    color: #707EAE !important;
+    font-size: .8rem !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .5px !important;
+}
+
+/* ── Primary & secondary buttons ── */
+.stButton > button {
+    background: linear-gradient(135deg, #4318FF 0%, #7551FF 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: all .3s ease !important;
+    box-shadow: 0 4px 15px rgba(67,24,255,.35) !important;
+}
+.stButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(67,24,255,.50) !important;
+}
+
+/* ── Download button ── */
+[data-testid="stDownloadButton"] > button {
+    background: linear-gradient(135deg, #05CD99 0%, #4318FF 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {
+    background: #FFFFFF !important;
+    border-radius: 14px !important;
+    padding: 5px !important;
+    border: 1px solid #E9EDF7 !important;
+    gap: 4px !important;
+    box-shadow: 0 2px 8px rgba(112,144,176,.10) !important;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 10px !important;
+    color: #707EAE !important;
+    font-weight: 500 !important;
+    font-family: 'Inter', sans-serif !important;
+    padding: 8px 20px !important;
+    transition: all .2s ease !important;
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #4318FF, #7551FF) !important;
+    color: white !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(67,24,255,.3) !important;
+}
+
+/* ── Divider ── */
+hr {
+    border: none !important;
+    border-top: 1.5px solid #E9EDF7 !important;
+    margin: 1.2rem 0 !important;
+}
+
+/* ── Captions ── */
+[data-testid="stCaptionContainer"] p, small { color: #707EAE !important; }
+
+/* ── Selectbox ── */
+[data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    border-color: #E9EDF7 !important;
+    border-radius: 12px !important;
+    color: #1B2559 !important;
+}
+
+/* ── Alert boxes ── */
+[data-testid="stAlert"] { border-radius: 14px !important; }
+
+/* ── Body text ── */
+p, li { color: #2D3748; }
+</style>
+""", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PALETA — PREMIUM LIGHT THEME
+# ══════════════════════════════════════════════════════════════════════════════
+BG     = '#FFFFFF'   # fondo de figuras matplotlib
+AX_BG  = '#FAFBFF'  # fondo de ejes (azulado muy suave)
+FG     = '#1B2559'  # texto principal
+GRID   = '#E9EDF7'  # grillas suaves
+C_BLUE = '#4318FF'  # azul eléctrico
+C_ORG  = '#FF9F43'  # naranja/amber
+C_GRN  = '#05CD99'  # teal verde
+C_RED  = '#EE5D50'  # rojo/coral
+C_PUR  = '#7551FF'  # púrpura
+C_GRAY = '#A3AED0'  # gris azulado
+
+# Gradientes CSS para KPI cards
+GRAD_BLUE   = 'linear-gradient(135deg, #4318FF 0%, #7551FF 100%)'
+GRAD_PURPLE = 'linear-gradient(135deg, #7551FF 0%, #9F7AFF 100%)'
+GRAD_TEAL   = 'linear-gradient(135deg, #05CD99 0%, #4CBFE6 100%)'
+GRAD_GREEN  = 'linear-gradient(135deg, #05CD99 0%, #00B4A6 100%)'
+GRAD_ORANGE = 'linear-gradient(135deg, #FF9F43 0%, #EE5D50 100%)'
+GRAD_PINK   = 'linear-gradient(135deg, #EE5D50 0%, #F93E7B 100%)'
+
+
+def kpi_card(icon, value, label, gradient):
+    """Tarjeta KPI con gradiente de color premium — estilo admin dashboard moderno."""
+    return f"""
+    <div style="
+        background: {gradient};
+        border-radius: 16px;
+        padding: 16px 12px 14px;
+        color: white;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+        display: flex; flex-direction: column; gap: 5px;
+        min-height: 105px;
+        position: relative; overflow: hidden;
+    ">
+        <div style="
+            position: absolute; right: -12px; top: -12px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: rgba(255,255,255,0.13);
+        "></div>
+        <div style="font-size: 1.2rem; line-height: 1;">{icon}</div>
+        <div style="
+            font-size: 1.35rem; font-weight: 800;
+            letter-spacing: -0.5px; line-height: 1.15;
+            font-family: 'Inter', sans-serif;
+            word-break: break-all;
+        ">{value}</div>
+        <div style="
+            font-size: 0.62rem; font-weight: 600;
+            opacity: 0.88; text-transform: uppercase; letter-spacing: 0.8px;
+            line-height: 1.3;
+        ">{label}</div>
+    </div>
+    """
+
+
+
+def _base_fig(figsize):
+    fig, ax = plt.subplots(figsize=figsize)
+    fig.patch.set_facecolor(BG)
+    ax.set_facecolor(AX_BG)
+    return fig, ax
+
+
+def _style(ax, grid=True):
+    ax.tick_params(colors=FG, labelsize=9)
+    ax.xaxis.label.set_color(FG)
+    ax.yaxis.label.set_color(FG)
+    ax.title.set_color(FG)
+    for spine in ['top', 'right']:
+        ax.spines[spine].set_visible(False)
+    for spine in ['bottom', 'left']:
+        ax.spines[spine].set_color(GRID)
+    if grid:
+        ax.set_axisbelow(True)
+        ax.yaxis.grid(True, color=GRID, linewidth=0.8, linestyle='--', alpha=0.8)
+    return ax
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # GENERADOR DE REPORTE PDF
-# ==========================================
+# ══════════════════════════════════════════════════════════════════════════════
 def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_desperd,
                         efic_pct, pant_perdidos, co2_total, co2_evitado, co2_diario,
                         pred_kg, pred_pant, pred_tela, pred_co2, seguridad):
@@ -35,29 +251,29 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
                             leftMargin=2*cm, rightMargin=2*cm,
                             topMargin=2*cm, bottomMargin=2*cm)
 
-    # Colores corporativos
-    C_DARK   = HexColor('#0E1117')
-    C_TEAL   = HexColor('#1A8A6A')
-    C_AMBER  = HexColor('#F39C12')
-    C_RED    = HexColor('#E74C3C')
-    C_GREEN  = HexColor('#2ECC71')
-    C_LIGHT  = HexColor('#F0F0F0')
-    C_MID    = HexColor('#555555')
+    # Colores del PDF (paleta clara corporativa)
+    C_DARK   = HexColor('#1B2559')
+    C_BLUE   = HexColor('#4318FF')
+    C_AMBER  = HexColor('#FF9F43')
+    C_RED    = HexColor('#EE5D50')
+    C_GREEN  = HexColor('#05CD99')
+    C_LIGHT  = HexColor('#F4F7FE')
+    C_MID    = HexColor('#707EAE')
 
     # Estilos
     S = {
         'title': ParagraphStyle('title', fontSize=20, fontName='Helvetica-Bold',
                                 textColor=C_DARK, alignment=TA_CENTER, spaceAfter=10),
         'subtitle': ParagraphStyle('subtitle', fontSize=11, fontName='Helvetica',
-                                   textColor=C_TEAL, alignment=TA_CENTER, spaceAfter=10),
+                                   textColor=C_BLUE, alignment=TA_CENTER, spaceAfter=10),
         'meta': ParagraphStyle('meta', fontSize=9, fontName='Helvetica',
                                textColor=C_MID, alignment=TA_CENTER, spaceAfter=2),
         'section': ParagraphStyle('section', fontSize=12, fontName='Helvetica-Bold',
-                                  textColor=C_TEAL, spaceBefore=14, spaceAfter=6),
+                                  textColor=C_BLUE, spaceBefore=14, spaceAfter=6),
         'body': ParagraphStyle('body', fontSize=9, fontName='Helvetica',
                                textColor=C_DARK, spaceAfter=6, leading=16),
         'callout_green': ParagraphStyle('cg', fontSize=9, fontName='Helvetica-Bold',
-                                        textColor=C_GREEN, spaceAfter=8, leading=16),
+                                        textColor=HexColor('#059669'), spaceAfter=8, leading=16),
         'callout_red': ParagraphStyle('cr', fontSize=9, fontName='Helvetica-Bold',
                                       textColor=C_RED, spaceAfter=8, leading=16),
         'callout_amber': ParagraphStyle('ca', fontSize=9, fontName='Helvetica-Bold',
@@ -77,7 +293,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
     benchmark_pant = round((metros_desperd - (total_tela + metros_desperd) * BENCHMARK_DESPERDICIO) / TELA_POR_PANTALON_M)
     ingreso_opt  = benchmark_pant * PRECIO_PANTALON_USD
 
-    def tabla(data, col_widths, header_bg=C_TEAL):
+    def tabla(data, col_widths, header_bg=C_BLUE):
         t = Table(data, colWidths=col_widths)
         style = TableStyle([
             ('BACKGROUND',  (0, 0), (-1, 0),  header_bg),
@@ -88,7 +304,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
             ('FONTNAME',    (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE',    (0, 1), (-1, -1), 9),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [C_LIGHT, white]),
-            ('GRID',        (0, 0), (-1, -1), 0.4, HexColor('#CCCCCC')),
+            ('GRID',        (0, 0), (-1, -1), 0.4, HexColor('#E9EDF7')),
             ('TOPPADDING',  (0, 0), (-1, -1), 5),
             ('BOTTOMPADDING',(0,0), (-1, -1), 5),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
@@ -103,7 +319,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
     # ENCABEZADO
     story.append(Paragraph("REPORTE DE RESIDUOS TEXTILES", S['title']))
     story.append(Paragraph("Sistema de Monitoreo IoT — Línea Denim Faditex", S['subtitle']))
-    story.append(HRFlowable(width=W, thickness=1.5, color=C_TEAL, spaceAfter=6))
+    story.append(HRFlowable(width=W, thickness=1.5, color=C_BLUE, spaceAfter=6))
     meta = Table([
         ['Período de Análisis:', f'{fecha_inicio} — {fecha_fin} ({dias} días activos)'],
         ['Fecha de Generación:', hoy],
@@ -122,7 +338,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
 
     # SECCIÓN 1
     story.append(Paragraph("1. PERÍODO MEDIDO Y COBERTURA DEL SENSOR", S['section']))
-    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_BLUE, spaceAfter=6))
     story.append(tabla([
         ['Campo', 'Valor'],
         ['Rango de Medición', f'{fecha_inicio} hasta {fecha_fin}'],
@@ -133,7 +349,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
 
     # SECCIÓN 2
     story.append(Paragraph("2. PRODUCCIÓN Y EFICIENCIA DEL PROCESO", S['section']))
-    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_BLUE, spaceAfter=6))
     story.append(tabla([
         ['Indicador', 'Valor'],
         ['Pantalones Producidos',      f'{total_pant:.0f} unidades'],
@@ -153,7 +369,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
 
     # SECCIÓN 3
     story.append(Paragraph("3. DESPERDICIO GENERADO E IMPACTO EN PRODUCCIÓN", S['section']))
-    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_BLUE, spaceAfter=6))
     story.append(tabla([
         ['Indicador', 'Valor'],
         ['Total de Desperdicio',         f'{total_desperd:.2f} kg de residuos textiles'],
@@ -168,7 +384,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
 
     # SECCIÓN 4
     story.append(Paragraph("4. HUELLA DE CARBONO E IMPACTO AMBIENTAL", S['section']))
-    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_BLUE, spaceAfter=6))
     story.append(tabla([
         ['Indicador', 'Valor'],
         ['Emisiones CO2eq Totales',     f'{co2_total:.1f} kg CO2eq'],
@@ -187,7 +403,7 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
 
     # SECCIÓN 5
     story.append(Paragraph("5. PROYECCIÓN Y RECOMENDACIONES PARA PRÓXIMO CICLO", S['section']))
-    story.append(HRFlowable(width=W, thickness=0.5, color=C_TEAL, spaceAfter=6))
+    story.append(HRFlowable(width=W, thickness=0.5, color=C_BLUE, spaceAfter=6))
     story.append(tabla([
         ['Indicador', 'Valor'],
         ['Desperdicio Estimado',        f'{pred_kg:.2f} kg'],
@@ -217,50 +433,20 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
     buf.seek(0)
     return buf
 
-# ==========================================
-# PALETA OSCURA — consistente con Streamlit
-# ==========================================
-BG      = '#0E1117'   # fondo Streamlit
-AX_BG   = '#1A1D27'   # fondo de ejes
-FG      = '#FAFAFA'   # texto
-GRID    = '#2B2D3A'   # grillas suaves
-C_BLUE  = '#4A9EDB'
-C_ORG   = '#F39C12'
-C_GRN   = '#2ECC71'
-C_RED   = '#E74C3C'
-C_PUR   = '#9B59B6'
-C_GRAY  = '#7F8C8D'
 
-def _base_fig(figsize):
-    fig, ax = plt.subplots(figsize=figsize)
-    fig.patch.set_facecolor(BG)
-    ax.set_facecolor(AX_BG)
-    return fig, ax
-
-def _style(ax, grid=True):
-    ax.tick_params(colors=FG, labelsize=9)
-    ax.xaxis.label.set_color(FG)
-    ax.yaxis.label.set_color(FG)
-    ax.title.set_color(FG)
-    for spine in ['top', 'right']:
-        ax.spines[spine].set_visible(False)
-    for spine in ['bottom', 'left']:
-        ax.spines[spine].set_color(GRID)
-    if grid:
-        ax.set_axisbelow(True)
-        ax.yaxis.grid(True, color=GRID, linewidth=0.5, linestyle='--')
-    return ax
-
-# ==========================================
+# ══════════════════════════════════════════════════════════════════════════════
 # CREDENCIALES DE ADAFRUIT IO
-# ==========================================
-if "ADAFRUIT_IO_USERNAME" in st.secrets:
+# Prioridad: Streamlit secrets → .env local.
+# El bloque try/except evita StreamlitSecretNotFoundError cuando no existe
+# secrets.toml (entorno de desarrollo local sin Streamlit Cloud).
+# ══════════════════════════════════════════════════════════════════════════════
+try:
     username = st.secrets["ADAFRUIT_IO_USERNAME"]
-    key = st.secrets["ADAFRUIT_IO_KEY"]
-else:
+    key      = st.secrets["ADAFRUIT_IO_KEY"]
+except Exception:
     load_dotenv()
     username = os.getenv("ADAFRUIT_IO_USERNAME")
-    key = os.getenv("ADAFRUIT_IO_KEY")
+    key      = os.getenv("ADAFRUIT_IO_KEY")
 
 if not username or not key:
     st.warning("⚠️ Faltan las credenciales de Adafruit IO (Usuario o Llave).")
@@ -280,13 +466,29 @@ try:
 except Exception:
     conexion_exitosa = False
 
-# ==========================================
-# SIDEBAR — MENÚ DE NAVEGACIÓN
-# ==========================================
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SIDEBAR — MENÚ DE NAVEGACIÓN CON HEADER DE MARCA
+# ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("## 👖 Faditex")
-    st.markdown("**Sistema IoT de Monitoreo Textil**")
-    st.markdown("---")
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #4318FF 0%, #7551FF 100%);
+        border-radius: 18px;
+        padding: 20px 16px 16px;
+        margin-bottom: 20px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 8px 24px rgba(67,24,255,.30);
+    ">
+        <div style="font-size: 2.2rem; margin-bottom: 6px;">👖</div>
+        <div style="font-size: 1.15rem; font-weight: 800; letter-spacing: -.5px; font-family: 'Inter', sans-serif;">Faditex Denim</div>
+        <div style="font-size: 0.7rem; opacity: 0.85; margin-top: 4px; text-transform: uppercase; letter-spacing: 1.2px;">
+            Sistema IoT · Monitoreo Textil
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     pagina = st.radio(
         "Navegación",
         ["📊 Dashboard Principal", "📈 Análisis de Datos", "🌱 Huella de Carbono", "🌲 Bosque Aleatorio", "📄 Reporte"],
@@ -295,14 +497,33 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**⚙️ Configuración del Modelo**")
     n_arboles_select = st.selectbox("Árboles en el Random Forest:", [50, 100, 150, 200, 300], index=1)
-    if conexion_exitosa:
-        st.success("📡 Adafruit IO conectado")
-    else:
-        st.error("📡 Sin conexión a Adafruit IO")
 
-# ==========================================
+    # Badge de conexión estilizado
+    if conexion_exitosa:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #05CD99, #00B4A6);
+            border-radius: 12px; padding: 10px 14px; margin-top: 14px;
+            color: white; font-size: 0.82rem; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(5,205,153,.30);
+            text-align: center;
+        ">📡 &nbsp; Adafruit IO Conectado</div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #EE5D50, #F93E7B);
+            border-radius: 12px; padding: 10px 14px; margin-top: 14px;
+            color: white; font-size: 0.82rem; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(238,93,80,.30);
+            text-align: center;
+        ">📡 &nbsp; Sin conexión a Adafruit IO</div>
+        """, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CARGA Y ENTRENAMIENTO (en caché)
-# ==========================================
+# ══════════════════════════════════════════════════════════════════════════════
 archivo_excel = 'Datos-sensores-entrenamiento.xlsx'
 archivo_csv1  = 'SensorPESO1-20260310-2114.csv'
 archivo_csv3  = 'SensorPESO3-20260310-2122.csv'
@@ -414,21 +635,35 @@ pantalones_futuros   = prediccion_futura_kg[0] * factor_kg_pantalones
 tela_futura          = pantalones_futuros * TELA_POR_PANTALON_M
 co2_prediccion       = pantalones_futuros * CO2_POR_PANTALON_KG
 
-# ==========================================
-# PÁGINA: DASHBOARD PRINCIPAL
-# ==========================================
-if pagina == "📊 Dashboard Principal":
-    st.markdown("## 📊 Dashboard de Producción Textil — Faditex")
-    st.markdown("Monitoreo en tiempo real · Predicción Random Forest · Huella de Carbono")
-    st.divider()
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PÁGINA: DASHBOARD PRINCIPAL
+# ══════════════════════════════════════════════════════════════════════════════
+if pagina == "📊 Dashboard Principal":
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0 0 4px; font-size: 1.8rem;">Dashboard de Producción Textil</h2>
+        <p style="color: #707EAE; margin: 0; font-size: 0.88rem;">
+            Faditex Denim &nbsp;·&nbsp; Monitoreo en tiempo real &nbsp;·&nbsp;
+            Predicción Random Forest &nbsp;·&nbsp; Huella de Carbono
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── 6 KPI Cards con gradientes ──
     c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("📅 Días Analizados",  f"{len(df_historico)}")
-    c2.metric("👖 Pantalones Est.",  f"{total_pantalones:.0f} un")
-    c3.metric("🧵 Tela Consumida",   f"{total_tela_consumida:.0f} m")
-    c4.metric("⚙️ Eficiencia",       f"{eficiencia_pct:.1f} %")
-    c5.metric("🌱 CO₂ Período",      f"{co2_total_kg:.0f} kg")
-    c6.metric("🤖 Precisión Modelo", f"{seguridad_pct:.1f} %")
+    with c1:
+        st.markdown(kpi_card("📅", f"{len(df_historico)}", "Días Analizados", GRAD_BLUE), unsafe_allow_html=True)
+    with c2:
+        st.markdown(kpi_card("👖", f"{total_pantalones:.0f}", "Pantalones Est.", GRAD_PURPLE), unsafe_allow_html=True)
+    with c3:
+        st.markdown(kpi_card("🧵", f"{total_tela_consumida:.0f} m", "Tela Consumida", GRAD_TEAL), unsafe_allow_html=True)
+    with c4:
+        st.markdown(kpi_card("⚙️", f"{eficiencia_pct:.1f}%", "Eficiencia", GRAD_GREEN), unsafe_allow_html=True)
+    with c5:
+        st.markdown(kpi_card("🌱", f"{co2_total_kg:.0f} kg", "CO₂ Período", GRAD_ORANGE), unsafe_allow_html=True)
+    with c6:
+        st.markdown(kpi_card("🤖", f"{seguridad_pct:.1f}%", "Precisión Modelo", GRAD_PINK), unsafe_allow_html=True)
 
     st.divider()
 
@@ -464,8 +699,10 @@ if pagina == "📊 Dashboard Principal":
     with col_serie:
         st.markdown("#### 📈 Desperdicio Diario (kg)")
         fig_s, ax_s = _base_fig((7, 3))
-        ax_s.fill_between(df_historico.index, df_historico['peso_total_kg'], alpha=0.15, color=C_BLUE)
-        ax_s.plot(df_historico.index, df_historico['peso_total_kg'], color=C_BLUE, linewidth=1.8)
+        ax_s.fill_between(df_historico.index, df_historico['peso_total_kg'],
+                          alpha=0.18, color=C_BLUE)
+        ax_s.plot(df_historico.index, df_historico['peso_total_kg'],
+                  color=C_BLUE, linewidth=2.2)
         ax_s.set_ylabel("kg", fontsize=9)
         _style(ax_s)
         plt.tight_layout()
@@ -486,7 +723,7 @@ if pagina == "📊 Dashboard Principal":
             wedgeprops={'edgecolor': BG, 'linewidth': 2}
         )
         for at in autotexts:
-            at.set_color(FG)
+            at.set_color('#FFFFFF')
             at.set_fontweight('bold')
         plt.tight_layout()
         st.pyplot(fig_pie)
@@ -499,8 +736,10 @@ if pagina == "📊 Dashboard Principal":
     with col_co2:
         st.markdown("#### 🌱 CO₂ Diario por Producción (kg)")
         fig_co2, ax_co2 = _base_fig((6, 2.8))
-        ax_co2.fill_between(df_historico.index, df_historico['co2_diario_kg'], alpha=0.2, color=C_ORG)
-        ax_co2.plot(df_historico.index, df_historico['co2_diario_kg'], color=C_ORG, linewidth=1.8)
+        ax_co2.fill_between(df_historico.index, df_historico['co2_diario_kg'],
+                            alpha=0.18, color=C_ORG)
+        ax_co2.plot(df_historico.index, df_historico['co2_diario_kg'],
+                    color=C_ORG, linewidth=2.2)
         ax_co2.set_ylabel("kg CO₂", fontsize=9)
         _style(ax_co2)
         plt.tight_layout()
@@ -521,19 +760,28 @@ if pagina == "📊 Dashboard Principal":
         st.metric("CO₂ evitado si −10%", f"{co2_evitado_kg:.1f} kg",
                   delta="Potencial ahorro", delta_color="normal")
 
-# ==========================================
-# PÁGINA: ANÁLISIS DE DATOS
-# ==========================================
-elif pagina == "📈 Análisis de Datos":
-    st.markdown("## 📈 Análisis de Datos Históricos")
-    st.divider()
 
-    tab1, tab2, tab3 = st.tabs(["Serie de Tiempo", "Distribución del Peso", "Matriz de Correlación"])
+# ══════════════════════════════════════════════════════════════════════════════
+# PÁGINA: ANÁLISIS DE DATOS
+# ══════════════════════════════════════════════════════════════════════════════
+elif pagina == "📈 Análisis de Datos":
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0 0 4px;">📈 Análisis de Datos Históricos</h2>
+        <p style="color: #707EAE; margin: 0; font-size: 0.88rem;">
+            Exploración de la serie temporal, distribución y correlaciones del modelo
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab1, tab2, tab3 = st.tabs(["📅 Serie de Tiempo", "📊 Distribución del Peso", "🔗 Matriz de Correlación"])
 
     with tab1:
         fig_st, ax_st = _base_fig((11, 4))
-        ax_st.fill_between(df_historico.index, df_historico['peso_total_kg'], alpha=0.15, color=C_BLUE)
-        ax_st.plot(df_historico.index, df_historico['peso_total_kg'], color=C_BLUE, linewidth=1.8)
+        ax_st.fill_between(df_historico.index, df_historico['peso_total_kg'],
+                           alpha=0.18, color=C_BLUE)
+        ax_st.plot(df_historico.index, df_historico['peso_total_kg'],
+                   color=C_BLUE, linewidth=2.2)
         ax_st.set_ylabel("Peso (kg)", fontsize=10)
         ax_st.set_xlabel("Fecha", fontsize=10)
         ax_st.set_title("Desperdicio Diario Registrado por Sensores", fontsize=11, fontweight='bold')
@@ -545,8 +793,8 @@ elif pagina == "📈 Análisis de Datos":
     with tab2:
         fig_h, ax_h = _base_fig((11, 4))
         sns.histplot(df_historico['peso_total_kg'], bins=20, kde=True,
-                     color=C_PUR, alpha=0.7, ax=ax_h,
-                     line_kws={'color': '#D4A0FF', 'linewidth': 2})
+                     color=C_PUR, alpha=0.65, ax=ax_h,
+                     line_kws={'color': C_BLUE, 'linewidth': 2.5})
         ax_h.set_xlabel("Peso Total (kg)", fontsize=10)
         ax_h.set_ylabel("Frecuencia", fontsize=10)
         ax_h.set_title("Distribución del Peso Diario", fontsize=11, fontweight='bold')
@@ -580,12 +828,12 @@ elif pagina == "📈 Análisis de Datos":
         fig_corr.patch.set_facecolor(BG)
         ax_corr.set_facecolor(AX_BG)
         sns.heatmap(matriz_corr, annot=True, fmt=".2f", cmap='RdYlGn',
-                    vmin=-1, vmax=1, linewidths=1, linecolor=BG,
+                    vmin=-1, vmax=1, linewidths=1, linecolor=GRID,
                     square=True, annot_kws={'size': 9, 'weight': 'bold'},
                     ax=ax_corr, cbar_kws={'shrink': 0.8})
         ax_corr.set_title("Correlación entre Variables del Modelo", fontsize=11, fontweight='bold', pad=10, color=FG)
         ax_corr.tick_params(colors=FG, labelsize=8)
-        # colorbar text
+        # Colorbar en tema claro
         cbar = ax_corr.collections[0].colorbar
         cbar.ax.yaxis.set_tick_params(color=FG, labelsize=8)
         plt.setp(cbar.ax.yaxis.get_ticklabels(), color=FG)
@@ -594,13 +842,20 @@ elif pagina == "📈 Análisis de Datos":
         st.pyplot(fig_corr)
         plt.close(fig_corr)
 
-# ==========================================
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PÁGINA: HUELLA DE CARBONO
-# ==========================================
+# ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "🌱 Huella de Carbono":
-    st.markdown("## 🌱 Huella de Carbono — Etapa de Fabricación")
-    st.caption("Basado en 6.5 kg CO₂ por jean (≈20% del ciclo de vida completo de 32–33.4 kg, etapa de confección y materia prima)")
-    st.divider()
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0 0 4px;">🌱 Huella de Carbono — Etapa de Fabricación</h2>
+        <p style="color: #707EAE; margin: 0; font-size: 0.88rem;">
+            Basado en 6.5 kg CO₂ por jean (≈20% del ciclo de vida completo de 32–33.4 kg,
+            etapa de confección y materia prima)
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(f"CO₂ Total ({len(df_historico)} días)", f"{co2_total_kg:.1f} kg",
@@ -643,8 +898,10 @@ elif pagina == "🌱 Huella de Carbono":
         st.warning("No hay datos en el rango seleccionado.")
     else:
         fig_co2, ax_co2 = _base_fig((10, 3.5))
-        ax_co2.fill_between(df_co2.index, df_co2['co2_diario_kg'], alpha=0.2, color=C_ORG)
-        ax_co2.plot(df_co2.index, df_co2['co2_diario_kg'], color=C_ORG, linewidth=1.8, marker='o', markersize=4)
+        ax_co2.fill_between(df_co2.index, df_co2['co2_diario_kg'], alpha=0.18, color=C_ORG)
+        ax_co2.plot(df_co2.index, df_co2['co2_diario_kg'], color=C_ORG, linewidth=2.2,
+                    marker='o', markersize=4,
+                    markerfacecolor='white', markeredgecolor=C_ORG, markeredgewidth=2)
         ax_co2.set_xlabel("Fecha", fontsize=10)
         ax_co2.set_ylabel("CO₂ (kg)", fontsize=10)
         ax_co2.set_title("CO₂ Generado por Día de Producción", fontsize=11, fontweight='bold')
@@ -670,7 +927,7 @@ elif pagina == "🌱 Huella de Carbono":
             wedgeprops={'edgecolor': BG, 'linewidth': 2}
         )
         for at in autotexts:
-            at.set_color(FG)
+            at.set_color('#FFFFFF')
             at.set_fontweight('bold')
         ax_pie.set_title("Eficiencia del Proceso", fontsize=11, fontweight='bold', color=FG)
         plt.tight_layout()
@@ -683,7 +940,8 @@ elif pagina == "🌱 Huella de Carbono":
         categorias  = ['Pantalones\nProducidos', 'Pantalones\nPerdidos']
         valores_bar = [total_pantalones, pantalones_perdidos]
         bars = ax_bar.bar(categorias, valores_bar,
-                          color=[C_GRN, C_RED], width=0.5, edgecolor=BG, linewidth=1.5)
+                          color=[C_GRN, C_RED], width=0.5,
+                          edgecolor='white', linewidth=1.5, zorder=3)
         for bar, val in zip(bars, valores_bar):
             ax_bar.text(bar.get_x() + bar.get_width() / 2,
                         bar.get_height() + max(valores_bar) * 0.02,
@@ -702,7 +960,7 @@ elif pagina == "🌱 Huella de Carbono":
         fases      = ['Fabricación\n(este sistema)', 'Ciclo de vida\ncompleto']
         valores_cv = [CO2_POR_PANTALON_KG, CO2_CICLO_VIDA_KG]
         bars_cv    = ax_cv.barh(fases, valores_cv,
-                                color=[C_ORG, C_GRAY], edgecolor=BG, height=0.4, linewidth=1.5)
+                                color=[C_ORG, C_GRAY], edgecolor='white', height=0.4, linewidth=1.5)
         for bar, val in zip(bars_cv, valores_cv):
             ax_cv.text(val + 0.4, bar.get_y() + bar.get_height() / 2,
                        f'{val} kg CO₂', va='center', fontsize=10, fontweight='bold', color=FG)
@@ -710,17 +968,44 @@ elif pagina == "🌱 Huella de Carbono":
         ax_cv.set_title("Huella de Carbono por Pantalón", fontsize=11, fontweight='bold')
         ax_cv.set_xlim(0, 40)
         _style(ax_cv, grid=False)
-        ax_cv.xaxis.grid(True, color=GRID, linewidth=0.5, linestyle='--')
+        ax_cv.xaxis.grid(True, color=GRID, linewidth=0.8, linestyle='--', alpha=0.8)
         plt.tight_layout()
         st.pyplot(fig_cv)
         plt.close(fig_cv)
 
-# ==========================================
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PÁGINA: BOSQUE ALEATORIO
-# ==========================================
+# ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "🌲 Bosque Aleatorio":
-    st.markdown("## 🌲 ¿Cómo funciona el Bosque Aleatorio?")
-    st.divider()
+    st.markdown("""
+    <div style="margin-bottom: 1.2rem;">
+        <h2 style="margin: 0 0 4px;">🌲 ¿Cómo funciona el Bosque Aleatorio?</h2>
+        <p style="color: #707EAE; margin: 0; font-size: 0.88rem;">
+            Visualización interactiva del algoritmo Random Forest y sus predicciones individuales
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Badge de precisión del modelo (antes vivía en Dashboard Principal)
+    st.markdown(f"""
+    <div style="
+        display: inline-flex; align-items: center; gap: 14px;
+        background: linear-gradient(135deg, #4318FF 0%, #7551FF 100%);
+        color: white; border-radius: 16px; padding: 12px 22px;
+        margin-bottom: 20px; box-shadow: 0 6px 20px rgba(67,24,255,.32);
+    ">
+        <span style="font-size: 1.5rem;">🤖</span>
+        <div>
+            <div style="font-size: 0.7rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px;">Precisión del Modelo</div>
+            <div style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px;">{seguridad_pct:.1f}%</div>
+        </div>
+        <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 14px;">
+            <div style="font-size: 0.7rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px;">Árboles</div>
+            <div style="font-size: 1.5rem; font-weight: 800;">{n_arboles_select}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     col_txt, col_img = st.columns([1, 1])
     with col_txt:
@@ -753,14 +1038,14 @@ elif pagina == "🌲 Bosque Aleatorio":
         ]
         fig_trees, ax_trees = _base_fig((6, 3.5))
         ax_trees.bar(range(1, len(preds_arboles) + 1), preds_arboles,
-                     color=C_GRN, alpha=0.8, edgecolor=BG, linewidth=0.8)
-        ax_trees.axhline(prediccion_futura_kg[0], color=C_RED, linewidth=2,
-                         linestyle='--', label=f'Promedio: {prediccion_futura_kg[0]:.2f} kg')
+                     color=C_GRN, alpha=0.85, edgecolor='white', linewidth=0.8, zorder=3)
+        ax_trees.axhline(prediccion_futura_kg[0], color=C_RED, linewidth=2.5,
+                         linestyle='--', label=f'Promedio: {prediccion_futura_kg[0]:.2f} kg', zorder=4)
         ax_trees.set_xlabel("Árbol N°", fontsize=10)
         ax_trees.set_ylabel("Predicción (kg)", fontsize=10)
         ax_trees.set_title("Votos individuales — primeros 20 árboles", fontsize=11, fontweight='bold')
         legend = ax_trees.legend(fontsize=9)
-        legend.get_frame().set_facecolor(AX_BG)
+        legend.get_frame().set_facecolor(BG)
         legend.get_frame().set_edgecolor(GRID)
         for text in legend.get_texts():
             text.set_color(FG)
@@ -779,18 +1064,52 @@ elif pagina == "🌲 Bosque Aleatorio":
 
     st.success(f"💡 **Conclusión del Bosque:** promediando los {n_arboles_select} árboles, la predicción final es **{prediccion_futura_kg[0]:.2f} kg** de desperdicio.")
 
-# ==========================================
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PÁGINA: REPORTE
-# ==========================================
+# ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "📄 Reporte":
-    st.markdown("## 📄 Reporte de Residuos Textiles")
-    st.markdown("Descarga el reporte completo en PDF con toda la información del período analizado.")
-    st.divider()
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0 0 4px;">📄 Reporte de Residuos Textiles</h2>
+        <p style="color: #707EAE; margin: 0; font-size: 0.88rem;">
+            Descarga el reporte completo en PDF con toda la información del período analizado
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     fecha_inicio = df_historico.index.min().strftime('%d/%m/%Y')
     fecha_fin    = df_historico.index.max().strftime('%d/%m/%Y')
 
-    st.markdown(f"**Período:** {fecha_inicio} — {fecha_fin} &nbsp;|&nbsp; **Días analizados:** {len(df_historico)} &nbsp;|&nbsp; **Modelo:** {n_arboles_select} árboles")
+    # Banner de resumen estilizado
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #F4F7FE 0%, #EBF2FF 100%);
+        border: 1.5px solid #E9EDF7;
+        border-radius: 18px;
+        padding: 18px 24px;
+        margin-bottom: 20px;
+        display: flex; gap: 40px; flex-wrap: wrap; align-items: center;
+    ">
+        <div>
+            <div style="font-size: 0.72rem; color: #707EAE; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 3px;">Período</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: #1B2559;">{fecha_inicio} — {fecha_fin}</div>
+        </div>
+        <div>
+            <div style="font-size: 0.72rem; color: #707EAE; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 3px;">Días analizados</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: #1B2559;">{len(df_historico)} días</div>
+        </div>
+        <div>
+            <div style="font-size: 0.72rem; color: #707EAE; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 3px;">Modelo</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: #1B2559;">Random Forest · {n_arboles_select} árboles</div>
+        </div>
+        <div>
+            <div style="font-size: 0.72rem; color: #707EAE; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 3px;">CO₂ Total</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: #EE5D50;">{co2_total_kg:.1f} kg CO₂eq</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("El reporte incluye las siguientes secciones:")
 
     col_a, col_b = st.columns(2)

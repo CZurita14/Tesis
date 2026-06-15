@@ -5,3 +5,8 @@ backgroundColor = "#F4F7FE"
 secondaryBackgroundColor = "#FFFFFF"
 textColor       = "#1B2559"
 font            = "sans serif"
+
+[client]
+# Oculta el botón "Manage app" y el menú hamburguesa para usuarios finales
+toolbarMode     = "minimal"
+showErrorDetails = false

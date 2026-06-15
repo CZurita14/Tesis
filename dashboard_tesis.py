@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import matplotlib.pyplot as plt
 import seaborn as sns
 from Adafruit_IO import Client, RequestError
@@ -153,8 +154,95 @@ hr {
 
 /* ── Body text ── */
 p, li { color: #2D3748; }
+
+/* ══════════════════════════════════════════════════════
+   OCULTAR ELEMENTOS DE GESTIÓN/ADMIN DE STREAMLIT
+   El usuario final solo debe ver el contenido del dashboard.
+   ══════════════════════════════════════════════════════ */
+
+/* Botón "Manage app" (esquina inferior derecha) */
+.stAppDeployButton {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Menú hamburguesa (⋮) superior derecho */
+#MainMenu {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Footer "Made with Streamlit" */
+footer {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Barra de herramientas de desarrollo (running indicator, stop button) */
+[data-testid="stToolbar"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Status bar / running badge */
+[data-testid="stStatusWidget"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Botón de gestión de la app en versiones recientes */
+[data-testid="stAppViewBlockContainer"] > div:last-child > div[data-testid="collapsedControl"] {
+    display: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
+
+# ── Ocultar botón "Manage app" vía JavaScript ─────────────────────────────────
+# El CSS a veces no alcanza el elemento porque Streamlit Cloud lo inyecta
+# con clases hasheadas que cambian entre versiones. Este script busca por
+# texto y por data-testid, re-ejecutándose cada 300 ms para resistir re-renders.
+components.html("""
+<script>
+(function() {
+    function hideManageApp() {
+        try {
+            var doc = window.parent.document;
+
+            // 1) Selectores CSS conocidos por versión de Streamlit
+            var bySelector = doc.querySelectorAll(
+                '[data-testid="stAppDeployButton"], ' +
+                '.stAppDeployButton, ' +
+                '[class*="deployButton"], ' +
+                '[class*="DeployButton"], ' +
+                '[class*="manageApp"], ' +
+                '[class*="ManageApp"]'
+            );
+            bySelector.forEach(function(el) { el.style.display = 'none'; });
+
+            // 2) Buscar por texto "Manage app" (failsafe universal)
+            var allEls = doc.querySelectorAll('button, a, div, span');
+            allEls.forEach(function(el) {
+                if (el.childElementCount === 0 &&
+                    el.textContent &&
+                    el.textContent.trim() === 'Manage app') {
+                    el.style.display = 'none';
+                    if (el.parentElement) {
+                        el.parentElement.style.display = 'none';
+                        if (el.parentElement.parentElement) {
+                            el.parentElement.parentElement.style.display = 'none';
+                        }
+                    }
+                }
+            });
+        } catch(e) {}
+    }
+
+    hideManageApp();
+    setInterval(hideManageApp, 300);
+})();
+</script>
+""", height=0)
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 # ══════════════════════════════════════════════════════════════════════════════

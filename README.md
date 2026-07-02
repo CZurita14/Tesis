@@ -1,8 +1,8 @@
 # Sistema IoT para Monitoreo de Residuos Textiles y Huella de Carbono
 
 **Tesis de Grado — Ingeniería en Tecnologías de la Información**  
-**Universidad Técnica de Ambato**  
-**Estudiante:** Christian Zurita · **Tutor:** Ing. Christian Junta Mg.  
+**Universidad Tecnológica Indoamérica**  
+**Estudiante:** Christian Zurita · **Tutor:** Ing. Christian Joseph Junta Andagana, Mg.  
 **Empresa:** Faditex Denim · Pelileo, Ecuador · 2026
 
 ---
@@ -164,7 +164,7 @@ python modelo_prediccion.py
 
 **Christian Zurita**  
 Estudiante de Ingeniería en Tecnologías de la Información  
-Universidad Técnica de Ambato — Ambato, Ecuador  
+Universidad Tecnológica Indoamérica — Ambato, Ecuador  
 GitHub: [@CZurita14](https://github.com/CZurita14)
 
 ---

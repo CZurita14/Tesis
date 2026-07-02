@@ -1,0 +1,108 @@
+Total diapositivas: 23
+
+=== DIAPOSITIVA 1 ===
+
+=== DIAPOSITIVA 2 ===
+BIENVENIDOS
+
+=== DIAPOSITIVA 3 ===
+
+=== DIAPOSITIVA 4 ===
+INGENIERÍA EN TECNOLOGÍAS DE LA INFORMACIÓNMATRIZ AMBATO2026
+
+=== DIAPOSITIVA 5 ===
+Tutor/a:
+Ing. Christian Junta Mg.
+Estudiante:
+Christian Zurita
+“SISTEMA DE MONITOREO PASIVO DE INFORMACIÓN PARA LA PRESENTACIÓN DE RESULTADOS DE LA HUELLA DE CARBONO USANDO DATOS DE PRODUCCIÓN TEXTIL EN UNA INDUSTRIA DE JEANS EN PELILEO”
+
+=== DIAPOSITIVA 6 ===
+Contenido
+01
+
+=== DIAPOSITIVA 7 ===
+Capítulo 1. Introducción
+a)
+
+=== DIAPOSITIVA 8 ===
+
+=== DIAPOSITIVA 9 ===
+
+=== DIAPOSITIVA 10 ===
+Planteamiento del Problema
+Problema Central
+“Inexistencia de herramientas para el procesamiento de datos de residuos textiles”
+Efecto1: Presencia de picos críticos no controlados que elevan el riesgo de incumplir el reglamento cantonal de medición de contaminación
+Efecto1: Aumento de la vulnerabilidad en la salud ocupacional para exposición prolongada a emisiones gaseosas y ruido
+Efecto1: Presencia de picos críticos no controlados que elevan el riesgo de incumplir el reglamento cantonal de medición de contaminación
+Causa1: Inexistencia de equipos automáticos para medir cuánto desperdicio se genera diariamente.
+Efecto2: Uso de registros manuales o cálculos observados que no reflejan la realidad de los sobrantes textiles.
+Efecto3: Dificultad para relacionar la cantidad de producción con el nivel de desperdicios generados
+
+=== DIAPOSITIVA 11 ===
+
+=== DIAPOSITIVA 12 ===
+Justificación
+
+=== DIAPOSITIVA 13 ===
+Viabilidad Técnológica
+
+=== DIAPOSITIVA 14 ===
+
+=== DIAPOSITIVA 15 ===
+Relación con los ODS
+
+=== DIAPOSITIVA 16 ===
+Objetivo General
+Implementar un dashboard para el monitoreo y control de datos de contaminación por residuos textiles en la empresa Faditex, usando un modelo de Machine Learning, con la finalidad de visualizar la cantidad de residuos textiles generados en el área de producción.
+
+=== DIAPOSITIVA 17 ===
+Objetivos Específicos
+Analizar la situación actual de generación de residuos textiles y la precisión en sus registros manuales, para establecer una línea base de impacto ambiental.
+Diseñar una arquitectura sólida que integra hardware de sensorización y protocolos de comunicación para el análisis de datos.
+Desarrollar e implementar un pipeline de procesamiento de datos en Python y el modelo predictivo Random Forest para una estimación de desperdicios generados.
+Validar el funcionamiento del pipeline y el modelo predictivo mediante comparaciones con Kpi’s, en un dashboard visual, validando el pipeline predictivo.
+100%
+100%
+100%
+80%
+
+=== DIAPOSITIVA 18 ===
+Alcance y Delimitación del Proyecto
+
+=== DIAPOSITIVA 19 ===
+Capítulo 2. Metodología
+b)
+
+=== DIAPOSITIVA 20 ===
+Metodología
+EXPLORAR
+MODELAR
+INTERPRETAR
+LIMPIAR
+OBTENER
+Adquisición automatizada de datos (peso de residuos) mediante hardware HX711 y ESP32. Extracción hacia Python con la API REST de Adafruit IO.
+Tratamiento de valores atípicos (outliers) y nulos. Aplicación de la técnica Z-Score para estandarizar las magnitudes antes de ingresar al algoritmo
+Análisis Exploratorio (EDA) para identificar patrones temporales de desperdicio y establecer la línea base de normalidad operativa en la planta.
+Entrenamiento del algoritmo supervisado Random Forest (Sk-learn). Transforma el peso en métricas predictivas de Huella de Carbono
+Despliegue en un Dashboard visual interactivo (Streamlit) para toma de decisiones y reportes técnicos válidos para el GAD de Pelileo.
+
+=== DIAPOSITIVA 21 ===
+Diseño de la solución
+
+=== DIAPOSITIVA 22 ===
+Validación del sistema (KPI’s)
+EFICIENCIA DEL PROCESO
+96 %
+¿“Cuánta tela comprada se convirtió en product final”?. Si marca 96%, significa que un 4% fue merma. Un echo que cualquier persona comprende.
+IMPACTO ECONÓMICO MATERIAL
+UNDs
+Convierte los kilos de tela desperdiciada en un valor doloroso pero real, respondiendo ¿Cuántos pantalos se pudieron fabricar?.
+TRAZABILIDAD TOTAL (IOT NUBE)
+100 %
+Garantiza el flujo complete: Balanza ➔ Nube ➔ Machine Learning ➔ Dashboard, permite estimar la producción total estimando la cantidad de desperdicio
+EMISIONES POR FABRICACIÓN
+
+=== DIAPOSITIVA 23 ===
+GRACIAS

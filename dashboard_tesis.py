@@ -5,7 +5,7 @@ import seaborn as sns
 from Adafruit_IO import Client, RequestError
 import os
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from modelo_prediccion import cargar_y_limpiar_datos, integrar_logica_negocio, entrenar_modelo_random_forest
 
@@ -975,12 +975,19 @@ elif pagina == "🌱 Huella de Carbono":
     # Selector de rango de fechas: la gráfica se recalcula según el día/semana elegido
     fecha_min = df_historico.index.min().date()
     fecha_max = df_historico.index.max().date()
+    # El calendario se extiende hasta el FIN DEL MES ACTUAL (aunque los datos
+    # terminen antes), para poder navegar y seleccionar meses posteriores al último
+    # registro (ej. junio/julio completos). El valor por defecto sigue siendo el
+    # rango con datos; los rangos sin datos muestran el aviso "No hay datos...".
+    _hoy = datetime.now().date()
+    _fin_mes_actual = (_hoy.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    limite_calendario = max(fecha_max, _fin_mes_actual)
     col_sel, col_kpi = st.columns([2, 1])
     with col_sel:
         rango = st.date_input(
             "Rango de fechas a visualizar:",
             value=(fecha_min, fecha_max),
-            min_value=fecha_min, max_value=fecha_max,
+            min_value=fecha_min, max_value=limite_calendario,
         )
 
     # date_input puede devolver una sola fecha mientras se está seleccionando el rango

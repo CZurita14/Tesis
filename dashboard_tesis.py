@@ -819,10 +819,12 @@ if pagina == "📊 Dashboard Principal":
 
     with col_serie:
         st.markdown("#### 📈 Desperdicio Diario (kg)")
+        # Usar serie de monitoreo (30g) para visualizar datos recientes, no afecta el modelo (50g)
+        df_display = cargar_serie_monitoreo(30).copy()
         fig_s, ax_s = _base_fig((7, 3))
-        ax_s.fill_between(df_historico.index, df_historico['peso_total_kg'],
+        ax_s.fill_between(df_display.index, df_display['peso_total_kg'],
                           alpha=0.18, color=C_BLUE)
-        ax_s.plot(df_historico.index, df_historico['peso_total_kg'],
+        ax_s.plot(df_display.index, df_display['peso_total_kg'],
                   color=C_BLUE, linewidth=2.2)
         ax_s.set_ylabel("kg", fontsize=9)
         _style(ax_s)
@@ -895,13 +897,21 @@ elif pagina == "📈 Análisis de Datos":
     </div>
     """, unsafe_allow_html=True)
 
+    st.caption(
+        "📊 **Nota:** La gráfica de serie temporal muestra todos los días sensados (umbral 30 g) "
+        "para visualizar datos recientes. El modelo predictivo y los KPIs del Dashboard Principal "
+        "usan solo días con desperdicio significativo (≥50 g)."
+    )
+
     tab1, tab2, tab3 = st.tabs(["📅 Serie de Tiempo", "📊 Distribución del Peso", "🔗 Matriz de Correlación"])
 
     with tab1:
+        # Usar serie de monitoreo (30g) para visualizar datos recientes, no afecta el modelo (50g)
+        df_display_tab = cargar_serie_monitoreo(30).copy()
         fig_st, ax_st = _base_fig((11, 4))
-        ax_st.fill_between(df_historico.index, df_historico['peso_total_kg'],
+        ax_st.fill_between(df_display_tab.index, df_display_tab['peso_total_kg'],
                            alpha=0.18, color=C_BLUE)
-        ax_st.plot(df_historico.index, df_historico['peso_total_kg'],
+        ax_st.plot(df_display_tab.index, df_display_tab['peso_total_kg'],
                    color=C_BLUE, linewidth=2.2)
         ax_st.set_ylabel("Peso (kg)", fontsize=10)
         ax_st.set_xlabel("Fecha", fontsize=10)

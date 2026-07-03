@@ -804,12 +804,17 @@ if pagina == "📊 Dashboard Principal":
                         return
                     ultimo = datos[0]
                     peso_actual = float(ultimo.value)
-                    st.metric("Peso actual (g)", f"{peso_actual:.1f} g")
-                    # Conversión g → pantalones usando el mismo factor derivado del pipeline
-                    # (factor_kg_pantalones = kg desperdicio → pantalones estimados).
-                    # Antes: peso_actual / 500 (aprox. hardcodeada, inconsistente con el modelo).
-                    st.metric("Equiv. pantalones", f"{(peso_actual / 1000) * factor_kg_pantalones:.2f} un")
-                    st.caption("🔄 Actualización cada 4s")
+                    st.metric(
+                        "Peso actual (g)",
+                        f"{peso_actual:.1f} g",
+                        help="Peso instantáneo registrado por la báscula en tiempo real. Actualiza cada 5 segundos desde el sensor HX711."
+                    )
+                    st.metric(
+                        "Equiv. pantalones",
+                        f"{(peso_actual / 1000) * factor_kg_pantalones:.2f} un",
+                        help="Conversión del peso actual a pantalones estimados usando el factor de desperdicio del modelo."
+                    )
+                    st.caption("🔄 Actualización cada 4s (filtrado Adafruit IO)")
                 except RequestError as e:
                     st.warning(f"Error feed: {e}")
 
@@ -819,6 +824,7 @@ if pagina == "📊 Dashboard Principal":
 
     with col_serie:
         st.markdown("#### 📈 Desperdicio Diario (kg)")
+        st.caption("💡 Gráfica de monitoreo (umbral 30g) — visualiza tendencias de desperdicio diario incluyendo datos recientes")
         # Usar serie de monitoreo (30g) para visualizar datos recientes, no afecta el modelo (50g)
         df_display = cargar_serie_monitoreo(30).copy()
         fig_s, ax_s = _base_fig((7, 3))
@@ -834,6 +840,7 @@ if pagina == "📊 Dashboard Principal":
 
     with col_pie:
         st.markdown("#### 🧵 Tela Útil vs Desperdicio")
+        st.caption("📊 Proporción de tela procesada vs rechazada en producción")
         fig_pie, ax_pie = plt.subplots(figsize=(3.5, 3))
         fig_pie.patch.set_facecolor(BG)
         ax_pie.set_facecolor(BG)
@@ -858,6 +865,7 @@ if pagina == "📊 Dashboard Principal":
 
     with col_co2:
         st.markdown("#### 🌱 CO₂ Diario por Producción (kg)")
+        st.caption("📈 Factor: 6.5 kg CO₂ por pantalón (etapa fabricación)")
         fig_co2, ax_co2 = _base_fig((6, 2.8))
         ax_co2.fill_between(df_historico.index, df_historico['co2_diario_kg'],
                             alpha=0.18, color=C_ORG)
@@ -871,17 +879,45 @@ if pagina == "📊 Dashboard Principal":
 
     with col_pred:
         st.markdown("#### 🔮 Predicción Siguiente Ciclo")
-        st.metric("Desperdicio estimado",  f"{prediccion_futura_kg[0]:.2f} kg")
-        st.metric("Pantalones a producir", f"{pantalones_futuros:.0f} un")
-        st.metric("Tela a consumir",       f"{tela_futura:.1f} m")
-        st.metric("CO₂ estimado",          f"{co2_prediccion:.1f} kg")
+        st.caption("🤖 Random Forest con %d árboles" % n_arboles_select)
+        st.metric(
+            "Desperdicio estimado",
+            f"{prediccion_futura_kg[0]:.2f} kg",
+            help="Predicción del modelo para el próximo ciclo de producción"
+        )
+        st.metric(
+            "Pantalones a producir",
+            f"{pantalones_futuros:.0f} un",
+            help="Pantalones estimados basado en desperdicio predicho"
+        )
+        st.metric(
+            "Tela a consumir",
+            f"{tela_futura:.1f} m",
+            help="Metros de tela necesarios (1.2 m por pantalón)"
+        )
+        st.metric(
+            "CO₂ estimado",
+            f"{co2_prediccion:.1f} kg",
+            help="Emisiones de CO₂ eq estimadas para la predicción"
+        )
 
     with col_lost:
         st.markdown("#### ⚠️ Pérdida por Desperdicio")
-        st.metric("Pantalones no producidos", f"{pantalones_perdidos:.0f} un",
-                  delta=f"-{pantalones_perdidos:.0f}", delta_color="inverse")
-        st.metric("CO₂ evitado si −10%", f"{co2_evitado_kg:.1f} kg",
-                  delta="Potencial ahorro", delta_color="normal")
+        st.caption("💼 Impacto económico y ambiental")
+        st.metric(
+            "Pantalones no producidos",
+            f"{pantalones_perdidos:.0f} un",
+            delta=f"-{pantalones_perdidos:.0f}",
+            delta_color="inverse",
+            help="Pantalones que dejaron de producirse por desperdicio (oportunidad de optimización)"
+        )
+        st.metric(
+            "CO₂ evitado si −10%",
+            f"{co2_evitado_kg:.1f} kg",
+            delta="Potencial ahorro",
+            delta_color="normal",
+            help="Reducción de CO₂ si se optimiza el desperdicio a 10% menos"
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -922,6 +958,7 @@ elif pagina == "📈 Análisis de Datos":
         plt.close(fig_st)
 
     with tab2:
+        st.caption("📊 Distribución estadística del desperdicio diario — muestra qué valores son más frecuentes")
         fig_h, ax_h = _base_fig((11, 4))
         sns.histplot(df_historico['peso_total_kg'], bins=20, kde=True,
                      color=C_PUR, alpha=0.65, ax=ax_h,
@@ -933,6 +970,7 @@ elif pagina == "📈 Análisis de Datos":
         plt.tight_layout()
         st.pyplot(fig_h)
         plt.close(fig_h)
+        st.caption("💡 La línea suave (KDE) muestra la densidad estimada de probabilidad")
 
     with tab3:
         st.caption("Correlación entre las variables que usa el modelo: el peso del día, "
@@ -990,20 +1028,33 @@ elif pagina == "🌱 Huella de Carbono":
     """, unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric(f"CO₂ Total ({len(df_historico)} días)", f"{co2_total_kg:.1f} kg",
-                help=f"Suma de todos los días analizados: "
-                     f"{df_historico.index.min().strftime('%d/%m/%Y')} a "
-                     f"{df_historico.index.max().strftime('%d/%m/%Y')}")
-    col2.metric("CO₂ por Jean (fabricación)",       "6.5 kg", "~20% ciclo de vida")
-    col3.metric("CO₂ evitado si −10% desperdicio",  f"{co2_evitado_kg:.1f} kg")
-    col4.metric("Intensidad CO₂ diaria",             f"{co2_diario_kg_promedio:.1f} kg/día")
+    col1.metric(
+        f"CO₂ Total ({len(df_historico)} días)",
+        f"{co2_total_kg:.1f} kg",
+        help=f"Suma de todas las emisiones del período: {df_historico.index.min().strftime('%d/%m/%Y')} a {df_historico.index.max().strftime('%d/%m/%Y')} | Basado en 6.5 kg CO₂eq por jean"
+    )
+    col2.metric(
+        "CO₂ por Jean",
+        "6.5 kg",
+        "~20% ciclo",
+        help="Etapa de fabricación (confección y materia prima). El ciclo completo es ~32.7 kg"
+    )
+    col3.metric(
+        "CO₂ evitado si −10%",
+        f"{co2_evitado_kg:.1f} kg",
+        help="Reducción potencial de emisiones si se optimiza el desperdicio textil"
+    )
+    col4.metric(
+        "Intensidad CO₂ diaria",
+        f"{co2_diario_kg_promedio:.1f} kg/día",
+        help="Promedio de emisiones diarias durante el período analizado"
+    )
 
     st.markdown("#### CO₂ Diario por Día de Producción — Monitoreo del Sensor")
     st.caption(
-        "🛰️ Gráfica de **monitoreo**: incluye todos los días sensados por la báscula "
-        "(umbral 30 g), incluidos los días recientes de baja actividad, por lo que llega "
-        "hasta la última medición. El **modelo predictivo y los KPIs de arriba** usan solo "
-        "días con desperdicio significativo (≥50 g)."
+        "🛰️ **Gráfica de monitoreo** (umbral 30 g): muestra TODOS los días sensados, incluidos datos recientes de baja actividad. "
+        "El **modelo predictivo y KPIs** usan solo días significativos (≥50 g). "
+        "Convertible en pantalones equivalentes usando: 1 kg desperdicio ≈ ~7 pantalones"
     )
 
     # Serie de MONITOREO (umbral 30 g) — SOLO para esta gráfica; incluye días recientes
@@ -1180,12 +1231,14 @@ elif pagina == "🌲 Bosque Aleatorio":
     ">
         <span style="font-size: 1.5rem;">🤖</span>
         <div>
-            <div style="font-size: 0.7rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px;">Precisión del Modelo</div>
+            <div style="font-size: 0.7rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px;">Precisión (MAPE)</div>
             <div style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px;">{seguridad_pct:.1f}%</div>
+            <div style="font-size: 0.6rem; opacity: 0.75;">El modelo acierta en este % en promedio</div>
         </div>
         <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 14px;">
             <div style="font-size: 0.7rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px;">Árboles</div>
             <div style="font-size: 1.5rem; font-weight: 800;">{n_arboles_select}</div>
+            <div style="font-size: 0.6rem; opacity: 0.75;">Votos independientes</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1193,28 +1246,33 @@ elif pagina == "🌲 Bosque Aleatorio":
     col_txt, col_img = st.columns([1, 1])
     with col_txt:
         st.markdown("""
-        Un **Random Forest** (Bosque Aleatorio) es un algoritmo de Machine Learning
-        que construye múltiples **Árboles de Decisión** de forma simultánea.
+        ## 🌳 Random Forest Explicado
 
-        Cada árbol:
-        - Recibe una muestra **diferente** de los datos históricos
-        - Analiza solo algunas de las variables disponibles
-        - Genera su propia **predicción individual**
+        Un **Bosque Aleatorio** es un algoritmo que construye múltiples **Árboles de Decisión** simultáneamente.
 
-        El bosque promedia los resultados de todos los árboles para producir
-        una predicción final más robusta y menos susceptible a errores aislados.
+        ### Cada árbol:
+        - 🎲 Recibe una muestra **diferente** de datos históricos
+        - 🔍 Analiza **algunas variables** (no todas)
+        - 🎯 Genera su propia **predicción individual**
+
+        ### El bosque promedia:
+        Todos los árboles votan y el promedio produce una predicción final **más robusta** y menos propensa a errores.
 
         ---
-        **¿Por qué es útil aquí?**
 
-        El desperdicio textil tiene un comportamiento **no lineal**: varía según el
-        día de la semana, el volumen reciente de trabajo y patrones históricos.
-        El Random Forest captura estas relaciones sin necesidad de asumir una
-        forma matemática fija entre las variables.
+        ### 📊 ¿Por qué aquí?
+
+        El desperdicio textil es **no lineal**:
+        - Varía con el **día de semana**
+        - Depende del **volumen reciente** de trabajo
+        - Sigue **patrones históricos** y ciclos
+
+        Random Forest captura estas relaciones complejas sin asumir una forma matemática fija.
         """)
 
     with col_img:
-        st.markdown("#### Predicción de cada árbol vs promedio del bosque")
+        st.markdown("#### 🗳️ Votos de cada árbol vs predicción final")
+        st.caption("Cada barra = predicción independiente de un árbol | Línea roja = promedio de todos los árboles")
         preds_arboles = [
             modelo_rf.estimators_[i].predict(ultimo_dia[features_modelo].values)[0]
             for i in range(min(20, len(modelo_rf.estimators_)))

@@ -276,7 +276,7 @@ GRAD_ORANGE = 'linear-gradient(135deg, #FF9F43 0%, #EE5D50 100%)'
 GRAD_PINK   = 'linear-gradient(135deg, #EE5D50 0%, #F93E7B 100%)'
 
 
-def kpi_card(icon, value, label, gradient):
+def kpi_card(icon, value, label, gradient, tooltip=""):
     """Tarjeta KPI con gradiente de color premium — estilo admin dashboard moderno."""
     return f"""
     <div style="
@@ -288,7 +288,8 @@ def kpi_card(icon, value, label, gradient):
         display: flex; flex-direction: column; gap: 5px;
         min-height: 105px;
         position: relative; overflow: hidden;
-    ">
+        cursor: help;
+    " title="{tooltip}">
         <div style="
             position: absolute; right: -12px; top: -12px;
             width: 60px; height: 60px; border-radius: 50%;
@@ -774,17 +775,53 @@ if pagina == "📊 Dashboard Principal":
     # ── 6 KPI Cards con gradientes ──
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     with c1:
-        st.markdown(kpi_card("📅", f"{len(df_historico)}", "Días Analizados", GRAD_BLUE), unsafe_allow_html=True)
+        st.markdown(
+            kpi_card(
+                "📅", f"{len(df_historico)}", "Días Analizados", GRAD_BLUE,
+                tooltip="Período de análisis: " + df_historico.index.min().strftime('%d/%m') + " a " + df_historico.index.max().strftime('%d/%m/%Y')
+            ),
+            unsafe_allow_html=True
+        )
     with c2:
-        st.markdown(kpi_card("👖", f"{total_pantalones:.0f}", "Pantalones Est.", GRAD_PURPLE), unsafe_allow_html=True)
+        st.markdown(
+            kpi_card(
+                "👖", f"{total_pantalones:.0f}", "Pantalones Est.", GRAD_PURPLE,
+                tooltip="Pantalones producidos estimados basado en desperdicio medido"
+            ),
+            unsafe_allow_html=True
+        )
     with c3:
-        st.markdown(kpi_card("🧵", f"{total_tela_consumida:.0f} m", "Tela Consumida", GRAD_TEAL), unsafe_allow_html=True)
+        st.markdown(
+            kpi_card(
+                "🧵", f"{total_tela_consumida:.0f} m", "Tela Consumida", GRAD_TEAL,
+                tooltip="Metros de tela neta utilizada en producción (sin desperdicio)"
+            ),
+            unsafe_allow_html=True
+        )
     with c4:
-        st.markdown(kpi_card("⚙️", f"{eficiencia_pct:.1f}%", "Eficiencia", GRAD_GREEN), unsafe_allow_html=True)
+        st.markdown(
+            kpi_card(
+                "⚙️", f"{eficiencia_pct:.1f}%", "Eficiencia", GRAD_GREEN,
+                tooltip="Tela útil ÷ (Tela útil + Desperdicio). Benchmark industrial: 92-95%"
+            ),
+            unsafe_allow_html=True
+        )
     with c5:
-        st.markdown(kpi_card("🌱", f"{co2_total_kg:.0f} kg", "CO₂ Período", GRAD_ORANGE), unsafe_allow_html=True)
+        st.markdown(
+            kpi_card(
+                "🌱", f"{co2_total_kg:.0f} kg", "CO₂ Período", GRAD_ORANGE,
+                tooltip="Emisiones totales de CO₂eq: 6.5 kg × pantalones producidos"
+            ),
+            unsafe_allow_html=True
+        )
     with c6:
-        st.markdown(kpi_card("🤖", f"{seguridad_pct:.1f}%", "Precisión Modelo", GRAD_PINK), unsafe_allow_html=True)
+        st.markdown(
+            kpi_card(
+                "🤖", f"{seguridad_pct:.1f}%", "Precisión Modelo", GRAD_PINK,
+                tooltip="MAPE: el modelo acierta en este porcentaje en promedio"
+            ),
+            unsafe_allow_html=True
+        )
 
     st.divider()
 

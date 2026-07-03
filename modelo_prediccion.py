@@ -18,7 +18,7 @@ DESPERDICIO_PROM_M   = 45        # metros de tela desperdiciada por mes (rango: 
 DENSIDAD_TELA_G_POR_M = 225      # gramos por metro lineal de tela
 # =============================================================================
 
-def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
+def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3, umbral_min=50):
     print("Iniciando fase ETL (Extracción, Transformación y Carga) para Excel y CSVs...")
 
     # Cargar todos los archivos Datos*.xlsx del directorio automáticamente.
@@ -57,10 +57,13 @@ def cargar_y_limpiar_datos(filepath_excel, filepath_csv1, filepath_csv3):
     # Transformación: Valores absolutos para corregir taras negativas
     df['value'] = df['value'].abs()
     
-    # Filtrar ruido: Conservar solo pesos significativos entre 50g y 2000g.
-    # <50g: ruido de tara del sensor vacío. >2000g: picos anómalos (ej: SensorPESO1 tenía -2464g → 2464g).
-    # El tope en 500g era demasiado restrictivo: Datos-sensores-entrenamiento tiene lecturas legítimas hasta 1673g.
-    df = df[(df['value'] >= 50) & (df['value'] <= 2000)]
+    # Filtrar ruido: Conservar solo pesos significativos entre umbral_min y 2000g.
+    # umbral_min=50 (por defecto): ruido de tara del sensor vacío. Es el valor que
+    #   usa el MODELO predictivo (días con desperdicio significativo).
+    # umbral_min más bajo (ej. 30): se usa SOLO para la gráfica de monitoreo, para
+    #   incluir días recientes de baja actividad realmente sensados. No alimenta el modelo.
+    # >2000g: picos anómalos (ej: SensorPESO1 tenía -2464g → 2464g).
+    df = df[(df['value'] >= umbral_min) & (df['value'] <= 2000)]
     
     # Convertir a formato fecha y tiempo, manejando zonas horarias (UTC a local)
     df['created_at'] = pd.to_datetime(df['created_at'])

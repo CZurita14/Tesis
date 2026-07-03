@@ -642,6 +642,24 @@ def cargar_modelo(n_arboles):
     return df_final, rf_model, rmse, mae, r2, seguridad_pct, factor_kg_pantalones
 
 @st.cache_data
+def cargar_serie_monitoreo(umbral_min=30):
+    """Serie diaria de peso SOLO para la gráfica de monitoreo (Huella de Carbono).
+
+    A diferencia del modelo —que usa únicamente días con desperdicio significativo
+    (≥50 g)— esta serie aplica un umbral más bajo para INCLUIR los días recientes de
+    baja actividad realmente sensados por la báscula (p. ej. ~34 g de julio). Así la
+    gráfica llega hasta el día más reciente. No alimenta el modelo ni los KPIs; es
+    puramente de visualización, por eso se calcula el máximo diario sin los lags ni
+    la invalidación por brechas (no se descarta ningún día con dato).
+    """
+    df = cargar_y_limpiar_datos(archivo_excel, archivo_csv1, archivo_csv3, umbral_min=umbral_min)
+    serie = df['value'].resample('D').max().dropna()
+    serie = serie[serie > 0]
+    dfv = serie.to_frame('peso_total_g')
+    dfv['peso_total_kg'] = dfv['peso_total_g'] / 1000.0
+    return dfv
+
+@st.cache_data
 def obtener_llave_feed(username_cache):
     """Detecta la clave (key) del feed de peso en Adafruit IO.
 
@@ -970,15 +988,27 @@ elif pagina == "🌱 Huella de Carbono":
     col3.metric("CO₂ evitado si −10% desperdicio",  f"{co2_evitado_kg:.1f} kg")
     col4.metric("Intensidad CO₂ diaria",             f"{co2_diario_kg_promedio:.1f} kg/día")
 
-    st.markdown("#### CO₂ Diario por Día de Producción")
+    st.markdown("#### CO₂ Diario por Día de Producción — Monitoreo del Sensor")
+    st.caption(
+        "🛰️ Gráfica de **monitoreo**: incluye todos los días sensados por la báscula "
+        "(umbral 30 g), incluidos los días recientes de baja actividad, por lo que llega "
+        "hasta la última medición. El **modelo predictivo y los KPIs de arriba** usan solo "
+        "días con desperdicio significativo (≥50 g)."
+    )
+
+    # Serie de MONITOREO (umbral 30 g) — SOLO para esta gráfica; incluye días recientes
+    # de baja actividad realmente sensados. El CO₂ se deriva con el mismo factor del
+    # modelo para mantener la coherencia de la conversión.
+    df_monitor = cargar_serie_monitoreo(30).copy()
+    df_monitor['co2_diario_kg'] = (df_monitor['peso_total_kg']
+                                   * factor_kg_pantalones * CO2_POR_PANTALON_KG)
 
     # Selector de rango de fechas: la gráfica se recalcula según el día/semana elegido
-    fecha_min = df_historico.index.min().date()
-    fecha_max = df_historico.index.max().date()
-    # El calendario se extiende hasta el FIN DEL MES ACTUAL (aunque los datos
-    # terminen antes), para poder navegar y seleccionar meses posteriores al último
-    # registro (ej. junio/julio completos). El valor por defecto sigue siendo el
-    # rango con datos; los rangos sin datos muestran el aviso "No hay datos...".
+    fecha_min = df_monitor.index.min().date()
+    fecha_max = df_monitor.index.max().date()
+    # El calendario se extiende hasta el FIN DEL MES ACTUAL (aunque los datos terminen
+    # antes), para poder navegar y seleccionar meses posteriores. El valor por defecto
+    # es el rango con datos.
     _hoy = datetime.now().date()
     _fin_mes_actual = (_hoy.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
     limite_calendario = max(fecha_max, _fin_mes_actual)
@@ -998,8 +1028,8 @@ elif pagina == "🌱 Huella de Carbono":
     else:
         fecha_ini = fecha_fin = rango
 
-    df_co2 = df_historico[(df_historico.index.date >= fecha_ini) &
-                          (df_historico.index.date <= fecha_fin)]
+    df_co2 = df_monitor[(df_monitor.index.date >= fecha_ini) &
+                        (df_monitor.index.date <= fecha_fin)]
 
     with col_kpi:
         st.metric("CO₂ del rango seleccionado",
@@ -1048,12 +1078,9 @@ elif pagina == "🌱 Huella de Carbono":
         # Nota de transparencia: se documenta la interrupción por corte de energía
         # en lugar de rellenar los días faltantes con datos ficticios.
         st.caption(
-            f"⚡ Última medición válida registrada: "
-            f"{df_historico.index.max().strftime('%d/%m/%Y')}. La recolección se "
-            "interrumpió por un corte de energía en la placa; los días sin registro "
-            "se omiten del eje (no se rellenan con valores ficticios). Al reanudar la "
-            "medición con la báscula recalibrada, los nuevos días se añadirán a "
-            "continuación del último punto."
+            f"⚡ Última medición sensada: {df_monitor.index.max().strftime('%d/%m/%Y')}. "
+            "El período sin registro (corte de energía en la placa) se omite del eje: "
+            "los días se muestran consecutivos, sin rellenar con valores ficticios."
         )
 
     col_a, col_b, col_c = st.columns(3)

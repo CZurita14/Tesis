@@ -10,12 +10,7 @@ from dotenv import load_dotenv
 from modelo_prediccion import cargar_y_limpiar_datos, integrar_logica_negocio, entrenar_modelo_random_forest
 
 try:
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.units import cm
-    from reportlab.lib.colors import HexColor, white
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    import reportlab  # noqa: F401  # solo detecta disponibilidad; los imports concretos van dentro de generar_reporte_pdf
     REPORTLAB_OK = True
 except ImportError:
     REPORTLAB_OK = False
@@ -178,10 +173,16 @@ footer {
     visibility: hidden !important;
 }
 
-/* Barra de herramientas de desarrollo (running indicator, stop button) */
+/* La barra de herramientas superior NO se oculta por completo: CONTIENE el botón
+   para expandir la barra lateral cuando está colapsada. Ocultarla entera dejaba
+   el menú bloqueado. Solo ocultamos sus acciones de desarrollo (Deploy/Manage). */
 [data-testid="stToolbar"] {
+    display: flex !important;
+    visibility: visible !important;
+}
+[data-testid="stToolbarActions"],
+[data-testid="stAppDeployButton"] {
     display: none !important;
-    visibility: hidden !important;
 }
 
 /* Status bar / running badge */
@@ -190,9 +191,16 @@ footer {
     visibility: hidden !important;
 }
 
-/* Botón de gestión de la app en versiones recientes */
-[data-testid="stAppViewBlockContainer"] > div:last-child > div[data-testid="collapsedControl"] {
-    display: none !important;
+/* Mantener SIEMPRE visible el control para expandir/colapsar la barra lateral.
+   Antes se ocultaba "collapsedControl", que es justamente la flecha para volver
+   a abrir el menú una vez colapsado: eso dejaba la barra lateral bloqueada. */
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarCollapseButton"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -333,6 +341,13 @@ def generar_reporte_pdf(df_hist, total_pant, total_tela, total_desperd, metros_d
                         pred_kg, pred_pant, pred_tela, pred_co2, seguridad):
     if not REPORTLAB_OK:
         return None
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib.colors import HexColor, white
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.lib.enums import TA_CENTER
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
@@ -802,7 +817,7 @@ if pagina == "📊 Dashboard Principal":
         fig_pie, ax_pie = plt.subplots(figsize=(3.5, 3))
         fig_pie.patch.set_facecolor(BG)
         ax_pie.set_facecolor(BG)
-        wedges, texts, autotexts = ax_pie.pie(
+        *_, autotexts = ax_pie.pie(
             [total_tela_consumida, total_metros_desperdicio],
             labels=['Útil', 'Desperdicio'],
             colors=[C_GRN, C_RED],
@@ -923,6 +938,7 @@ elif pagina == "📈 Análisis de Datos":
         ax_corr.tick_params(colors=FG, labelsize=8)
         # Colorbar en tema claro
         cbar = ax_corr.collections[0].colorbar
+        assert cbar is not None
         cbar.ax.yaxis.set_tick_params(color=FG, labelsize=8)
         plt.setp(cbar.ax.yaxis.get_ticklabels(), color=FG)
         cbar.ax.set_facecolor(AX_BG)
@@ -969,8 +985,9 @@ elif pagina == "🌱 Huella de Carbono":
 
     # date_input puede devolver una sola fecha mientras se está seleccionando el rango
     if isinstance(rango, (tuple, list)):
-        fecha_ini = rango[0]
-        fecha_fin = rango[1] if len(rango) > 1 else rango[0]
+        fechas = list(rango)
+        fecha_ini = fechas[0]
+        fecha_fin = fechas[1] if len(fechas) > 1 else fechas[0]
     else:
         fecha_ini = fecha_fin = rango
 
@@ -1005,7 +1022,7 @@ elif pagina == "🌱 Huella de Carbono":
         fig_pie, ax_pie = plt.subplots(figsize=(4, 3.5))
         fig_pie.patch.set_facecolor(BG)
         ax_pie.set_facecolor(BG)
-        wedges, texts, autotexts = ax_pie.pie(
+        *_, autotexts = ax_pie.pie(
             [total_tela_consumida, total_metros_desperdicio],
             labels=[f'Tela útil\n{total_tela_consumida:.1f} m', f'Desperdicio\n{total_metros_desperdicio:.1f} m'],
             colors=[C_GRN, C_RED],
@@ -1246,11 +1263,14 @@ elif pagina == "📄 Reporte":
                     seguridad      = seguridad_pct,
                 )
 
-            nombre_archivo = f"Reporte_Faditex_{df_historico.index.min().strftime('%Y%m%d')}_{df_historico.index.max().strftime('%Y%m%d')}.pdf"
-            st.download_button(
-                label="⬇️ Descargar PDF",
-                data=pdf_buf,
-                file_name=nombre_archivo,
-                mime="application/pdf",
-                use_container_width=True,
-            )
+            if pdf_buf is None:
+                st.error("No se pudo generar el PDF. Verifica que `reportlab` esté instalado.")
+            else:
+                nombre_archivo = f"Reporte_Faditex_{df_historico.index.min().strftime('%Y%m%d')}_{df_historico.index.max().strftime('%Y%m%d')}.pdf"
+                st.download_button(
+                    label="⬇️ Descargar PDF",
+                    data=pdf_buf,
+                    file_name=nombre_archivo,
+                    mime="application/pdf",
+                    use_container_width=True,
+                )

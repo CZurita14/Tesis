@@ -1010,17 +1010,51 @@ elif pagina == "🌱 Huella de Carbono":
         st.warning("No hay datos en el rango seleccionado.")
     else:
         fig_co2, ax_co2 = _base_fig((10, 3.5))
-        ax_co2.fill_between(df_co2.index, df_co2['co2_diario_kg'], alpha=0.18, color=C_ORG)
-        ax_co2.plot(df_co2.index, df_co2['co2_diario_kg'], color=C_ORG, linewidth=2.2,
+        # Eje ORDINAL: una posición por día CON dato. Los días sin registro
+        # (p. ej. cortes de energía en la placa) quedan omitidos y no dejan
+        # huecos: la línea salta directo al siguiente día disponible / al más
+        # reciente. Cuando entren datos nuevos, aparecen pegados al último punto.
+        y_co2 = df_co2['co2_diario_kg'].values
+        x_co2 = list(range(len(df_co2)))
+        etiquetas_fecha = list(df_co2.index.strftime('%d/%m'))
+        ax_co2.fill_between(x_co2, y_co2, alpha=0.18, color=C_ORG)
+        ax_co2.plot(x_co2, y_co2, color=C_ORG, linewidth=2.2,
                     marker='o', markersize=4,
                     markerfacecolor='white', markeredgecolor=C_ORG, markeredgewidth=2)
-        ax_co2.set_xlabel("Fecha", fontsize=10)
+        # Resaltar el último día (el más reciente) como estado actual
+        ax_co2.scatter([x_co2[-1]], [y_co2[-1]], s=80, color=C_ORG,
+                       edgecolor='white', linewidth=1.8, zorder=5)
+        ax_co2.annotate(f"Último día\n{etiquetas_fecha[-1]}",
+                        xy=(x_co2[-1], y_co2[-1]),
+                        xytext=(-6, 14), textcoords='offset points',
+                        ha='right', va='bottom', fontsize=8, color=FG, fontweight='bold')
+        # Como máximo ~10 etiquetas de fecha para no saturar el eje; el último
+        # día siempre se etiqueta.
+        n = len(df_co2)
+        paso = max(1, n // 10)
+        ticks = list(range(0, n, paso))
+        if (n - 1) not in ticks:
+            ticks.append(n - 1)
+        ax_co2.set_xticks(ticks)
+        ax_co2.set_xticklabels([etiquetas_fecha[i] for i in ticks])
+        ax_co2.set_xlabel("Día de producción (días sin registro omitidos)", fontsize=10)
         ax_co2.set_ylabel("CO₂ (kg)", fontsize=10)
         ax_co2.set_title("CO₂ Generado por Día de Producción", fontsize=11, fontweight='bold')
         _style(ax_co2)
         plt.tight_layout()
         st.pyplot(fig_co2)
         plt.close(fig_co2)
+
+        # Nota de transparencia: se documenta la interrupción por corte de energía
+        # en lugar de rellenar los días faltantes con datos ficticios.
+        st.caption(
+            f"⚡ Última medición válida registrada: "
+            f"{df_historico.index.max().strftime('%d/%m/%Y')}. La recolección se "
+            "interrumpió por un corte de energía en la placa; los días sin registro "
+            "se omiten del eje (no se rellenan con valores ficticios). Al reanudar la "
+            "medición con la báscula recalibrada, los nuevos días se añadirán a "
+            "continuación del último punto."
+        )
 
     col_a, col_b, col_c = st.columns(3)
 
